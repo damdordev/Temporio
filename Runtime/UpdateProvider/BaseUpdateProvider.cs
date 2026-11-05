@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine.Pool;
 
 namespace Damdor.Temporio
 {
@@ -36,10 +37,13 @@ namespace Damdor.Temporio
         /// <param name="timing">The player loop timing whose registered receivers should be invoked.</param>
         protected void Run(PlayerLoopTiming timing)
         {
-            foreach (var receiver in GetReceivers(timing).ToArray())
+            var list = ListPool<UpdateReceiver>.Get();
+            list.AddRange(GetReceivers(timing));
+            foreach (var receiver in list)
             {
                 receiver();
             }
+            ListPool<UpdateReceiver>.Release(list);
         }
 
         public virtual void Dispose()
