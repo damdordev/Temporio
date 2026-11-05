@@ -38,13 +38,14 @@ namespace Damdor.Temporio
         internal ParametrizeConditionTimerGuard<T> PopParametrizeConditionTimerGuard<T>() => new();
         internal void ReleaseGuard(TimerGuard guard)
         {
-            if(guard is GameObjectTimerGuard gameObjectTimerGuard)
+            switch (guard)
             {
-                gameObjectTimerGuardPool.Release(gameObjectTimerGuard);
-            }
-            if(guard is ConditionTimerGuard conditionTimerGuard)
-            {
-                conditionTimerGuardPool.Release(conditionTimerGuard);
+                case GameObjectTimerGuard gameObjectTimerGuard:
+                    gameObjectTimerGuardPool.Release(gameObjectTimerGuard);
+                    break;
+                case ConditionTimerGuard conditionTimerGuard:
+                    conditionTimerGuardPool.Release(conditionTimerGuard);
+                    break;
             }
         }
         

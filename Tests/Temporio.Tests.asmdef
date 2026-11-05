@@ -2,9 +2,9 @@
     "name": "Temporio.Tests",
     "rootNamespace": "Damdor.Temporio.Tests",
     "references": [
-        "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner",
-        "Temporio"
+        "GUID:27619889b8ba8c24980f49ee34dbb44a",
+        "GUID:0acc523941302664db1f4e527237feb3",
+        "GUID:5d0c675727d249eccb50f2f5de217064"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

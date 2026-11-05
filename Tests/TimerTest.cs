@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+// ReSharper disable AccessToModifiedClosure
 
 namespace Damdor.Temporio.Tests
 {
@@ -304,6 +305,7 @@ namespace Damdor.Temporio.Tests
                 Assert.That(contexts[index].InvocationDelay,
                     Is.EqualTo(actualTime - contexts[index].ScheduledTime));
                 if (behaviour == MissingPeriodBehaviour.RunAll)
+                    // ReSharper disable once PossibleLossOfFraction
                     AssertContext(contexts[index], index / 2, actualTime, start.AddSeconds(index / 2 * 2));
                 else
                 {
@@ -363,27 +365,25 @@ namespace Damdor.Temporio.Tests
             var parameter = new object();
             var receivedParameters = new List<object>();
             var attempts = 0;
-            TimerAction throwException = () =>
-            {
-                attempts++;
-                throw new InvalidOperationException("Expected timer action failure.");
-            };
+
             var builder = Schedule().When(start).Action(() => calls.Add("before"));
             if (repeating) builder.Every(TimeSpan.FromSeconds(2)).InvocationLimit(3);
             switch (throwingAction)
             {
                 case ActionKind.WithoutParameter:
-                    builder.Action(throwException);
+                    builder.Action(ThrowException);
                     break;
                 case ActionKind.WithParameter:
-                    builder.Action(parameter, _ => throwException());
+                    builder.Action(parameter, _ => ThrowException());
                     break;
                 case ActionKind.WithContext:
-                    builder.Action(_ => throwException());
+                    builder.Action(_ => ThrowException());
                     break;
                 case ActionKind.WithContextAndParameter:
-                    builder.Action(parameter, (_, __) => throwException());
+                    builder.Action(parameter, (_, _) => ThrowException());
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(throwingAction), throwingAction, null);
             }
 
             var timer = AddAllActions(builder, calls, contexts, parameter, receivedParameters).Run();
@@ -404,6 +404,13 @@ namespace Damdor.Temporio.Tests
             }
 
             Assert.That(timer.IsAlive, Is.False);
+            return;
+
+            void ThrowException()
+            {
+                attempts++;
+                throw new InvalidOperationException("Expected timer action failure.");
+            }
         }
 
         [TestCase(false)]
@@ -523,7 +530,7 @@ namespace Damdor.Temporio.Tests
         public void Actions_ThrowingErrorHandlerDoesNotSkipLaterActions()
         {
             timerManager.LogErrors = false;
-            timerManager.SetErrorHandler((_, __) => throw new InvalidOperationException("Handler failure."));
+            timerManager.SetErrorHandler((_, _) => throw new InvalidOperationException("Handler failure."));
             var calls = 0;
             Schedule().When(timerManager.Now).Action(() => throw new InvalidOperationException("Action failure."))
                 .Action(() => calls++).Run();

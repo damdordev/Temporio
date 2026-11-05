@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
+// ReSharper disable AccessToModifiedClosure
 
 namespace Damdor.Temporio.Tests
 {
@@ -181,7 +182,7 @@ namespace Damdor.Temporio.Tests
             TimerAction action = () => { };
             TimerActionWithContext contextual = _ => { };
             TimerActionWithParameter<int> parametrized = _ => { };
-            TimerActionWithContextAndParameter<string> contextualParametrized = (_, __) => { };
+            TimerActionWithContextAndParameter<string> contextualParametrized = (_, _) => { };
 
             builder.Action(action).Action(contextual).Action(42, parametrized)
                 .Action("payload", contextualParametrized).Action(action);
@@ -441,10 +442,10 @@ namespace Damdor.Temporio.Tests
                 case BuilderMethod.MissingPeriodBehaviour:
                     builder.MissingPeriodBehaviour(MissingPeriodBehaviour.RunAll); break;
                 case BuilderMethod.Action: builder.Action(() => { }); break;
-                case BuilderMethod.ActionWithContext: builder.Action((TimerInvocationContext _) => { }); break;
-                case BuilderMethod.ActionWithParameter: builder.Action(42, (int _) => { }); break;
+                case BuilderMethod.ActionWithContext: builder.Action(_ => { }); break;
+                case BuilderMethod.ActionWithParameter: builder.Action(42, _ => { }); break;
                 case BuilderMethod.ActionWithContextAndParameter:
-                    builder.Action(42, (TimerInvocationContext _, int __) => { }); break;
+                    builder.Action(42, (_, _) => { }); break;
                 case BuilderMethod.Timing: builder.Timing(PlayerLoopTiming.LateUpdate); break;
                 case BuilderMethod.CancelOnDestroy: builder.CancelOnDestroy(CreateOwner()); break;
                 case BuilderMethod.CancelIf: builder.CancelIf(() => false); break;
