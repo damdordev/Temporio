@@ -75,20 +75,6 @@ namespace Damdor.Temporio
             return pool;
         }
         
-        // internal void ReleaseGuard(TimerGuard guard)
-        // {
-        //     switch (guard)
-        //     {
-        //         case GameObjectTimerGuard gameObjectTimerGuard:
-        //             gameObjectTimerGuardPool.Release(gameObjectTimerGuard);
-        //             break;
-        //         case ConditionTimerGuard conditionTimerGuard:
-        //             conditionTimerGuardPool.Release(conditionTimerGuard);
-        //             break;
-        //     }
-        // }
-
-
         public void Dispose()
         {
             internalTimerPool.Dispose();
