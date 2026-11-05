@@ -42,6 +42,10 @@ namespace Damdor.Temporio
             {
                 gameObjectTimerGuardPool.Release(gameObjectTimerGuard);
             }
+            if(guard is ConditionTimerGuard conditionTimerGuard)
+            {
+                conditionTimerGuardPool.Release(conditionTimerGuard);
+            }
         }
         
 
