@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 namespace Damdor.Temporio
@@ -6,6 +5,9 @@ namespace Damdor.Temporio
     internal abstract class TimerGuard
     {
         public abstract bool Check();
+        internal abstract void Reset();
+        internal abstract void ReturnToPool(TemporioPooling pooling);
+
     }
     
     internal class GameObjectTimerGuard : TimerGuard
@@ -19,9 +21,14 @@ namespace Damdor.Temporio
 
         public override bool Check() => gameObject != null;
 
-        internal void Reset()
+        internal override void Reset()
         {
             gameObject = null;
+        }
+
+        internal override void ReturnToPool(TemporioPooling pooling)
+        {
+            pooling.ReleaseGameObjectTimerGuard(this);
         }
     }
 
@@ -36,24 +43,19 @@ namespace Damdor.Temporio
 
         public override bool Check() => !condition();
 
-        internal void Reset()
+        internal override void Reset()
         {
             condition = null;
         }
-    }
 
-    internal abstract class ParametrizeConditionTimerGuard : TimerGuard
-    {
-        // ReSharper disable once UnusedMember.Global
-        public abstract Type ParameterType { get; }
-        // ReSharper disable once UnusedMemberHierarchy.Global
-        internal virtual void Reset() {}
+        internal override void ReturnToPool(TemporioPooling pooling)
+        {
+            pooling.ReleaseConditionTimerGuard(this);
+        }
     }
-        
     
-    internal class ParametrizeConditionTimerGuard<T> : ParametrizeConditionTimerGuard
+    internal class ParametrizeConditionTimerGuard<T> : TimerGuard
     {
-        public override Type ParameterType => typeof(T);
         private ParametrizeTimerGuardCondition<T> condition;
         private T parameter;
         
@@ -67,9 +69,13 @@ namespace Damdor.Temporio
 
         internal override void Reset()
         {
-            base.Reset();
             condition = null;
             parameter = default;
+        }
+
+        internal override void ReturnToPool(TemporioPooling pooling)
+        {
+            pooling.ReleaseParametrizeConditionTimerGuard(this);
         }
     }
     

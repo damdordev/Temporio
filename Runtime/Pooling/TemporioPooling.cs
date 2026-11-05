@@ -16,7 +16,9 @@ namespace Damdor.Temporio
         private readonly ObjectPool<ConditionTimerGuard> conditionTimerGuardPool =
             new(100, data => data.Reset(), () => new ConditionTimerGuard());
         private readonly Dictionary<Type, ObjectPool<TimerInvocation>>
-            timerInvocationWithParameterPool = new();
+            timerInvocationWithParameterPools = new();
+        private readonly Dictionary<Type, ObjectPool<TimerGuard>>
+            parametrizeConditionTimerGuardPools = new();
 
         internal InternalTimer PopInternalTimer() => internalTimerPool.Pop();
         internal void ReleaseInternalTimer(InternalTimer data) => internalTimerPool.Release(data);
@@ -29,13 +31,13 @@ namespace Damdor.Temporio
         private ObjectPool<TimerInvocation> GetTimerInvocationWithParameterPool<T>()
         {
             var type = typeof(T);
-            if (timerInvocationWithParameterPool.TryGetValue(type, out var pool)) return pool;
+            if (timerInvocationWithParameterPools.TryGetValue(type, out var pool)) return pool;
             pool = new ObjectPool<TimerInvocation>(
                 50,
                 data => data.Reset(),
                 () => new TimerInvocationWithParameter<T>()
             );
-            timerInvocationWithParameterPool[type] = pool;
+            timerInvocationWithParameterPools[type] = pool;
             return pool;
         }
         
@@ -51,21 +53,40 @@ namespace Damdor.Temporio
         internal void ReleaseInternalTimerBuilder(InternalTimerBuilder timerBuilder) => timerBuilderPool.Release(timerBuilder);
 
         internal GameObjectTimerGuard PopGameObjectTimerGuard() => gameObjectTimerGuardPool.Pop();
+        internal void ReleaseGameObjectTimerGuard(GameObjectTimerGuard guard) => gameObjectTimerGuardPool.Release(guard);
         internal ConditionTimerGuard PopConditionTimerGuard() => conditionTimerGuardPool.Pop();
-        // ReSharper disable once MemberCanBeMadeStatic.Global
-        internal ParametrizeConditionTimerGuard<T> PopParametrizeConditionTimerGuard<T>() => new();
-        internal void ReleaseGuard(TimerGuard guard)
+        internal void ReleaseConditionTimerGuard(ConditionTimerGuard guard) => conditionTimerGuardPool.Release(guard);
+
+        internal ParametrizeConditionTimerGuard<T> PopParametrizeConditionTimerGuard<T>() =>
+            GetParametrizeConditionTimerGuardPool<T>().Pop() as ParametrizeConditionTimerGuard<T>;
+        internal void ReleaseParametrizeConditionTimerGuard<T>(ParametrizeConditionTimerGuard<T> guard)
+            => GetParametrizeConditionTimerGuardPool<T>().Release(guard);
+        
+        private ObjectPool<TimerGuard> GetParametrizeConditionTimerGuardPool<T>()
         {
-            switch (guard)
-            {
-                case GameObjectTimerGuard gameObjectTimerGuard:
-                    gameObjectTimerGuardPool.Release(gameObjectTimerGuard);
-                    break;
-                case ConditionTimerGuard conditionTimerGuard:
-                    conditionTimerGuardPool.Release(conditionTimerGuard);
-                    break;
-            }
+            var type = typeof(T);
+            if (parametrizeConditionTimerGuardPools.TryGetValue(type, out var pool)) return pool;
+            pool = new ObjectPool<TimerGuard>(
+                50,
+                data => data.Reset(),
+                () => new ParametrizeConditionTimerGuard<T>()
+            );
+            parametrizeConditionTimerGuardPools[type] = pool;
+            return pool;
         }
+        
+        // internal void ReleaseGuard(TimerGuard guard)
+        // {
+        //     switch (guard)
+        //     {
+        //         case GameObjectTimerGuard gameObjectTimerGuard:
+        //             gameObjectTimerGuardPool.Release(gameObjectTimerGuard);
+        //             break;
+        //         case ConditionTimerGuard conditionTimerGuard:
+        //             conditionTimerGuardPool.Release(conditionTimerGuard);
+        //             break;
+        //     }
+        // }
 
 
         public void Dispose()
