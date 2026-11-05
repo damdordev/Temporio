@@ -135,7 +135,7 @@ namespace Damdor.Temporio
             timerBuilders.Remove(builder.InternalId);
             var internalId = checked(++lastTimerInternalId);
             CreateNewInternalTimer(internalId, builder);
-            Pooling.ReleaseInternalTimerBuilder(builder);
+            ReleaseInternalTimerBuilder(builder);
             return new Timer(weakReference, internalId);
         }
 
@@ -169,6 +169,8 @@ namespace Damdor.Temporio
             timer.InvocationLimit = builder.InvocationLimit;
             timer.MissingPeriodBehaviour = builder.MissingPeriodBehaviour;
             timer.Timing = builder.Timing;
+            builder.Invocations.Clear();
+            builder.Guards.Clear();
 
             timers[internalId] = timer;
         }
@@ -181,7 +183,7 @@ namespace Damdor.Temporio
 
         private void ClearTimerBuilders()
         {
-            foreach (var builder in timerBuilders.Values) Pooling.ReleaseInternalTimerBuilder(builder);
+            foreach (var builder in timerBuilders.Values) ReleaseInternalTimerBuilder(builder);
             timerBuilders.Clear();
         }
         private void OnFixedUpdate() => ProcessTimers(PlayerLoopTiming.FixedUpdate);
@@ -288,6 +290,16 @@ namespace Damdor.Temporio
             foreach (var guard in internalTimer.Guards) Pooling.ReleaseGuard(guard);
 
             Pooling.ReleaseInternalTimer(internalTimer);
+        }
+        
+        private void ReleaseInternalTimerBuilder(InternalTimerBuilder builder)
+        {
+            foreach (var invocation in builder.Invocations) Pooling.ReleaseTimerInvocation(invocation);
+            builder.Invocations.Clear();
+            foreach (var guard in builder.Guards) Pooling.ReleaseGuard(guard);
+            builder.Guards.Clear();
+
+            Pooling.ReleaseInternalTimerBuilder(builder);
         }
         
         
