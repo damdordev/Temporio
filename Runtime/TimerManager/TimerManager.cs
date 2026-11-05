@@ -1,5 +1,4 @@
 using System;
-using Damdor.Temporio.Pooling;
 
 namespace Damdor.Temporio
 {
