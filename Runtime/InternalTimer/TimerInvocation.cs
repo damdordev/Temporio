@@ -14,10 +14,15 @@ namespace Damdor.Temporio
         
         public override void Fire(TimerInvocationContext context)
         {
-            
+            Action?.Invoke();
+            ActionWithContext?.Invoke(context);
         }
         
-        internal void Reset() {}
+        internal void Reset()
+        {
+            Action = null;
+            ActionWithContext = null;
+        }
     }
 
     internal abstract class TimerInvocationWithParameter : TimerInvocation
@@ -34,9 +39,15 @@ namespace Damdor.Temporio
         
         public override void Fire(TimerInvocationContext context)
         {
-            
+            Action?.Invoke(Parameter);
+            ActionWithContext?.Invoke(context, Parameter);
         }
         
-        internal void Reset() {}
+        internal void Reset()
+        {
+            Action = null;
+            ActionWithContext = null;
+            Parameter = default;
+        }
     }
 }

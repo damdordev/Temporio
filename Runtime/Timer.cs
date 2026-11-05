@@ -22,7 +22,7 @@ namespace Damdor.Temporio
         /// <remarks>
         /// This property returns false if the associated timer manager can no longer be reached or if the timer is no longer active.
         /// </remarks>
-        public bool IsAlive => timerManager.TryGetTarget(out var manager) && manager.IsAlive(internalId);
+        public bool IsAlive => GetInternalTimer() != null;
 
         /// <summary>
         /// Gets a value indicating whether the associated timer is periodic.
@@ -33,7 +33,7 @@ namespace Damdor.Temporio
         /// <remarks>
         /// This property returns false if the associated timer manager can no longer be reached or if the timer is configured to run only once.
         /// </remarks>
-        public bool IsPeriodic => timerManager.TryGetTarget(out var manager) && manager.IsPeriodic(internalId);
+        public bool IsRepeating => GetInternalTimerOrThrow()?.IsRepeating ?? false;
 
         /// <summary>
         /// Gets the interval between invocations of the associated timer.
@@ -41,7 +41,7 @@ namespace Damdor.Temporio
         /// <value>
         /// The timer period, or <see cref="TimeSpan.Zero"/> if the associated timer manager is unavailable.
         /// </value>
-        public TimeSpan Period => timerManager.TryGetTarget(out var manager) ? manager.GetPeriod(internalId) : TimeSpan.Zero;
+        public TimeSpan RepeatInterval => GetInternalTimerOrThrow()?.RepeatInterval ?? TimeSpan.Zero;
 
         /// <summary>
         /// Gets the date and time at which the associated timer is next scheduled to be invoked.
@@ -52,7 +52,7 @@ namespace Damdor.Temporio
         /// <remarks>
         /// This value reflects the timer state reported by the associated timer manager. If the manager can no longer be reached, the property returns the current date and time as a fallback value.
         /// </remarks>
-        public DateTime NextInvocationTime => timerManager.TryGetTarget(out var manager) ? manager.GetNextInvocationTime(internalId) : DateTime.Now;
+        public DateTime NextInvocationTime => GetInternalTimerOrThrow()?.NextInvocationTime ?? DateTime.Now;
 
         /// <summary>
         /// Gets the remaining time until the associated timer is next scheduled to invoke.
@@ -60,18 +60,28 @@ namespace Damdor.Temporio
         /// <value>
         /// The time interval until the next invocation, or <see cref="TimeSpan.Zero"/> if the associated timer manager is unavailable.
         /// </value>
-        public TimeSpan TimeToNextInvocation => timerManager.TryGetTarget(out var manager) ? manager.GetTimeToNextInvocation(internalId) : TimeSpan.Zero;
+        public TimeSpan TimeToNextInvocation
+        {
+            get
+            {
+                var internalTimer = GetInternalTimerOrThrow();
+                timerManager.TryGetTarget(out var manager);
+                var time = internalTimer.NextInvocationTime - manager!.Now;
+                return time < TimeSpan.Zero ? TimeSpan.Zero : time;
+            }
+        }
 
         /// <summary>
         /// Gets the configured maximum number of times the associated timer may be invoked.
         /// </summary>
         /// <value>
-        /// The invocation limit reported by the timer manager, or 0 if the associated timer manager is unavailable.
+        /// The invocation limit reported by the timer manager, or -1 if the associated timer manager is unavailable.
+        /// 0 means no limit
         /// </value>
         /// <remarks>
         /// This value describes the timer's configured invocation cap and does not indicate how many invocations have already occurred.
         /// </remarks>
-        public int InvocationLimit => timerManager.TryGetTarget(out var manager) ? manager.GetInvocationLimit(internalId) : 0;
+        public int InvocationLimit => GetInternalTimerOrThrow()?.InvocationLimit ?? -1;
 
         /// <summary>
         /// Gets the number of times the associated timer has been invoked.
@@ -82,7 +92,7 @@ namespace Damdor.Temporio
         /// <remarks>
         /// This property reflects the invocation count reported by the associated timer manager. If the manager can no longer be reached, the count cannot be determined and 0 is returned.
         /// </remarks>
-        public int InvocationCount => timerManager.TryGetTarget(out var manager) ? manager.GetInvocationCount(internalId) : 0;
+        public int InvocationCount => GetInternalTimerOrThrow()?.InvocationCount ?? 0;
 
         private readonly WeakReference<TimerManager> timerManager;
         internal readonly long internalId;
@@ -100,6 +110,19 @@ namespace Damdor.Temporio
         /// <return>
         /// true if the timer was successfully cancelled; otherwise, false.
         /// </return>
-        public bool Cancel() => false;
+        public bool Cancel() => timerManager != null && timerManager.TryGetTarget(out var manager)
+            && manager.CancelTimer(internalId);
+        
+        private InternalTimer GetInternalTimer()
+        {
+            return timerManager != null && timerManager.TryGetTarget(out var manager)
+                ? manager.GetInternalTimer(internalId)
+                : null;
+        }
+
+        private InternalTimer GetInternalTimerOrThrow()
+        {
+            return GetInternalTimer() ?? throw new ArgumentException();
+        }
     }
 }

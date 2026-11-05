@@ -22,20 +22,27 @@ namespace Damdor.Temporio
         private readonly IUpdateProvider updateProvider;
 
         private readonly Dictionary<long, InternalTimerBuilder> timerBuilders = new();
+        private readonly Dictionary<long, InternalTimer> timers = new();
         private long lastTimerBuilderInternalId;
+        private long lastTimerInternalId;
         private bool isDisposed;
+        private bool isRunning;
+        private bool isUpdating;
+        private InternalTimer executingTimer;
+        private TimerExceptionHandler errorHandler;
+        private readonly List<long> updateTimers = new();
         
         /// <summary>
         /// Creates a new instance of <see cref="TimerManager"/>. Both <see cref="ITimeProvider"/> and <see cref="IUpdateProvider"/>
         /// become owned by this instance and will be disposed when this instance is disposed.
         /// </summary>
         /// <param name="timeProvider">Provider for current time.</param>
-        /// <param name="updateProvider">Provider for update events. If null, the default one is used.</param>
-        /// <exception cref="ArgumentException">Thrown if any parameter is null.</exception>
+        /// <param name="updateProvider">Provider for update events.</param>
+        /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         public TimerManager(ITimeProvider timeProvider, IUpdateProvider updateProvider)
         {
-            this.timeProvider = timeProvider;
-            this.updateProvider = updateProvider;
+            this.timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+            this.updateProvider = updateProvider ?? throw new ArgumentNullException(nameof(updateProvider));
             weakReference = new WeakReference<TimerManager>(this);
             Pooling = new TemporioPooling();
         }
@@ -46,6 +53,9 @@ namespace Damdor.Temporio
         /// </summary>
         public void Run()
         {
+            if (isDisposed) throw new ObjectDisposedException(nameof(TimerManager));
+            if (isRunning) throw new InvalidOperationException("TimerManager is already running.");
+            isRunning = true;
             updateProvider.Register(PlayerLoopTiming.Update, OnUpdate);
             updateProvider.Register(PlayerLoopTiming.FixedUpdate, OnFixedUpdate);
             updateProvider.Register(PlayerLoopTiming.LateUpdate, OnLateUpdate);
@@ -61,6 +71,12 @@ namespace Damdor.Temporio
             if (isDisposed) return;
             isDisposed = true;
             ClearTimerBuilders();
+            foreach (var timer in timers.Values)
+            {
+                if (timer != executingTimer) Pooling.ReleaseInternalTimer(timer);
+            }
+
+            timers.Clear();
             updateProvider.Unregister(PlayerLoopTiming.Update, OnUpdate);
             updateProvider.Unregister(PlayerLoopTiming.FixedUpdate, OnFixedUpdate);
             updateProvider.Unregister(PlayerLoopTiming.LateUpdate, OnLateUpdate);
@@ -91,6 +107,7 @@ namespace Damdor.Temporio
         /// This delegate receives the debug name of the timer and the exception that occurred.</param>
         public void SetErrorHandler(TimerExceptionHandler errorHandler)
         {
+            this.errorHandler = errorHandler;
         }
 
         /// <summary>
@@ -106,22 +123,28 @@ namespace Damdor.Temporio
         /// </summary>
         public bool CancelTimerOnException { get; set; } = false;
         
-        internal bool IsAlive(long internalTimerId) => true;
-        internal bool IsPeriodic(long internalTimerId) => false;
-        internal TimeSpan GetPeriod(long internalTimerId) => TimeSpan.Zero;
-        internal DateTime GetNextInvocationTime(long internalTimerId) => DateTime.Now;
-        internal TimeSpan GetTimeToNextInvocation(long internalTimerId) => TimeSpan.Zero;
-        internal int GetInvocationLimit(long internalTimerId) => 0;
-        internal int GetInvocationCount(long internalTimerId) => 0;
-        
-        internal InternalTimer GetInternalTimer(long internalId) => null;
+        internal InternalTimer GetInternalTimer(long internalId)
+            => timers.GetValueOrDefault(internalId);
         internal InternalTimerBuilder GetInternalTimerBuilder(long internalId) 
             => timerBuilders.GetValueOrDefault(internalId);
         internal Timer RunTimer(InternalTimerBuilder builder)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(TimerManager));
+            if (builder.IsRepeating && builder.RepeatInterval <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(builder.RepeatInterval), "Repeat interval must be positive.");
             timerBuilders.Remove(builder.InternalId);
-            return new Timer();
+            var internalId = checked(++lastTimerInternalId);
+            CreateNewInternalTimer(internalId, builder);
+            Pooling.ReleaseInternalTimerBuilder(builder);
+            return new Timer(weakReference, internalId);
+        }
+
+        internal bool CancelTimer(long internalId)
+        {
+            if (!timers.TryGetValue(internalId, out var timer)) return false;
+            timers.Remove(internalId);
+            if (timer != executingTimer) Pooling.ReleaseInternalTimer(timer);
+            return true;
         }
 
         private void CreateNewInternalTimerBuilder(long internalId)
@@ -132,14 +155,134 @@ namespace Damdor.Temporio
             timerBuilders.Add(internalId, builder);
         }
         
-        private void OnUpdate() => ClearTimerBuilders();
+        private void CreateNewInternalTimer(long internalId, InternalTimerBuilder builder)
+        {
+            var timer = Pooling.PopInternalTimer();
+            timer.Reset();
+            timer.InternalId = internalId;
+            timer.StartTime = builder.HasStartTime ? builder.StartTime : Now;
+            timer.NextInvocationTime = timer.StartTime;
+            timer.RepeatInterval = builder.RepeatInterval;
+            timer.IsRepeating = builder.IsRepeating;
+            timer.Invocations.AddRange(builder.Invocations);
+            timer.Guards.AddRange(builder.Guards);
+            timer.DebugName = builder.DebugName;
+            timer.InvocationLimit = builder.InvocationLimit;
+            timer.MissingPeriodBehaviour = builder.MissingPeriodBehaviour;
+            timer.Timing = builder.Timing;
+
+            timers[internalId] = timer;
+        }
+        
+        private void OnUpdate()
+        {
+            ClearTimerBuilders();
+            ProcessTimers(PlayerLoopTiming.Update);
+        }
 
         private void ClearTimerBuilders()
         {
             foreach (var builder in timerBuilders.Values) Pooling.ReleaseInternalTimerBuilder(builder);
             timerBuilders.Clear();
         }
-        private void OnFixedUpdate() { }
-        private void OnLateUpdate() { }
+        private void OnFixedUpdate() => ProcessTimers(PlayerLoopTiming.FixedUpdate);
+        private void OnLateUpdate() => ProcessTimers(PlayerLoopTiming.LateUpdate);
+
+        private void ProcessTimers(PlayerLoopTiming timing)
+        {
+            if (isDisposed || isUpdating) return;
+            isUpdating = true;
+            try
+            {
+                var now = Now;
+                // Callbacks can add or cancel timers without changing this update's work list.
+                updateTimers.AddRange(timers.Keys);
+                foreach (var internalId in updateTimers)
+                {
+                    if (isDisposed) break;
+                    if (!timers.TryGetValue(internalId, out var timer) || timer.Timing != timing) continue;
+                    executingTimer = timer;
+                    try
+                    {
+                        ProcessTimer(timer, now);
+                    }
+                    finally
+                    {
+                        executingTimer = null;
+                        if (!timers.ContainsKey(internalId)) Pooling.ReleaseInternalTimer(timer);
+                    }
+                }
+            }
+            finally
+            {
+                updateTimers.Clear();
+                isUpdating = false;
+            }
+        }
+
+        private void ProcessTimer(InternalTimer timer, DateTime now)
+        {
+            foreach (var guard in timer.Guards)
+            {
+                try
+                {
+                    if (guard.Check() && timers.ContainsKey(timer.InternalId)) continue;
+                }
+                catch (Exception exception)
+                {
+                    ReportException(timer, exception);
+                }
+                CancelTimer(timer.InternalId);
+                return;
+            }
+
+            while (timers.ContainsKey(timer.InternalId) && timer.NextInvocationTime <= now)
+            {
+                var context = new TimerInvocationContext(timer.InvocationCount, now, timer.NextInvocationTime);
+                var cancelOnException = false;
+                foreach (var invocation in timer.Invocations)
+                {
+                    try
+                    {
+                        invocation.Fire(context);
+                    }
+                    catch (Exception exception)
+                    {
+                        cancelOnException |= CancelTimerOnException;
+                        ReportException(timer, exception);
+                    }
+                }
+                timer.InvocationCount++;
+
+                if (!timer.IsRepeating || cancelOnException ||
+                    (timer.InvocationLimit > 0 && timer.InvocationCount >= timer.InvocationLimit))
+                    CancelTimer(timer.InternalId);
+                if (!timers.ContainsKey(timer.InternalId)) return;
+
+                var periods = timer.MissingPeriodBehaviour == MissingPeriodBehaviour.RunAll
+                    ? 1
+                    : (now - timer.NextInvocationTime).Ticks / timer.RepeatInterval.Ticks + 1;
+                // There may be no representable next DateTime near DateTime.MaxValue.
+                if (periods > (DateTime.MaxValue.Ticks - timer.NextInvocationTime.Ticks) / timer.RepeatInterval.Ticks)
+                {
+                    CancelTimer(timer.InternalId);
+                    return;
+                }
+                timer.NextInvocationTime = timer.NextInvocationTime.AddTicks(periods * timer.RepeatInterval.Ticks);
+            }
+        }
+
+        private void ReportException(InternalTimer timer, Exception exception)
+        {
+            if (LogErrors) UnityEngine.Debug.LogException(exception);
+            try
+            {
+                errorHandler?.Invoke(timer.DebugName, exception);
+            }
+            catch (Exception handlerException)
+            {
+                if (LogErrors) UnityEngine.Debug.LogException(handlerException);
+            }
+        }
     }
 }

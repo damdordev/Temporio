@@ -99,7 +99,7 @@ namespace Damdor.Temporio
         /// Sets the maximum number of times the timer may be invoked before it stops. The number includes the initial invocation.
         /// </summary>
         /// <param name="limit">
-        /// The maximum number of invocations allowed for the timer.
+        /// The maximum number of invocations allowed for the timer. 0 means no limit.
         /// </param>
         /// <returns>
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.

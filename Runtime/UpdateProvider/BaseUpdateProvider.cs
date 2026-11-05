@@ -36,7 +36,7 @@ namespace Damdor.Temporio
         /// <param name="timing">The player loop timing whose registered receivers should be invoked.</param>
         protected void Run(PlayerLoopTiming timing)
         {
-            foreach (var receiver in GetReceivers(timing))
+            foreach (var receiver in GetReceivers(timing).ToArray())
             {
                 receiver();
             }

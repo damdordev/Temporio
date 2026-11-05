@@ -413,16 +413,16 @@ namespace Damdor.Temporio.Tests
 
             Assert.That(builder.IsValid, Is.False);
             Assert.That(timer.IsAlive, Is.True);
-            Assert.That(timer.IsPeriodic, Is.True);
-            Assert.That(timer.Period, Is.EqualTo(period));
+            Assert.That(timer.IsRepeating, Is.True);
+            Assert.That(timer.RepeatInterval, Is.EqualTo(period));
             Assert.That(timer.NextInvocationTime, Is.EqualTo(start));
             Assert.That(timer.TimeToNextInvocation, Is.EqualTo(TimeSpan.FromSeconds(10)));
             Assert.That(timer.InvocationLimit, Is.EqualTo(3));
             Assert.That(timer.InvocationCount, Is.Zero);
             var internalTimer = timerManager.GetInternalTimer(timer.internalId);
             Assert.That(internalTimer, Is.Not.Null);
-            Assert.That(internalTimer.FirstInvocationTime, Is.EqualTo(start));
-            Assert.That(internalTimer.Period, Is.EqualTo(period));
+            Assert.That(internalTimer.StartTime, Is.EqualTo(start));
+            Assert.That(internalTimer.RepeatInterval, Is.EqualTo(period));
             Assert.That(internalTimer.Timing, Is.EqualTo(PlayerLoopTiming.LateUpdate));
             Assert.That(internalTimer.MissingPeriodBehaviour, Is.EqualTo(MissingPeriodBehaviour.RunAll));
             Assert.That(internalTimer.Invocations, Is.EqualTo(invocations));

@@ -5,7 +5,7 @@ namespace Damdor.Temporio
 {
     internal class TemporioPooling : IDisposable
     {
-        private readonly ObjectPool<InternalTimer> internalTimerDataPool =
+        private readonly ObjectPool<InternalTimer> internalTimerPool =
             new(500, data => data.Reset(), () => new InternalTimer());
         private readonly ObjectPool<TimerInvocationWithoutParameter> timerInvocationDataWithoutParameterPool =
             new(500, data => data.Reset(), () => new TimerInvocationWithoutParameter());
@@ -20,8 +20,8 @@ namespace Damdor.Temporio
         private readonly Dictionary<Type, ObjectPool<ParametrizeConditionTimerGuard>> parametrizeConditionTimerGuardPools =
             new();
 
-        internal InternalTimer PopInternalTimerData() => new InternalTimer();
-        internal void ReleaseInternalTimerData(InternalTimer data) {}
+        internal InternalTimer PopInternalTimer() => internalTimerPool.Pop();
+        internal void ReleaseInternalTimer(InternalTimer data) => internalTimerPool.Release(data);
         
         internal TimerInvocationWithoutParameter PopTimerInvocationDataWithoutParameter() => new();
         internal void ReleaseTimerInvocationDataWithoutParameter(TimerInvocationWithoutParameter invocation) {}
