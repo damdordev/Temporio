@@ -19,6 +19,7 @@ namespace Damdor.Temporio
         private readonly float startUnityTime;
         private readonly bool useScaledTime;
 
+        // ReSharper disable once MemberCanBeProtected.Global
         public UnityTimeProvider(bool useScaledTime = true)
         {
             startDateTime = DateTime.Now;
