@@ -13,6 +13,17 @@ namespace Damdor.Temporio
     /// </summary>
     public readonly struct TimerBuilder
     {
+        /// <summary>
+        /// Gets a value indicating whether this builder is still valid and can be used to configure and run the timer.
+        /// Builder can be invalidated in following cases:
+        /// <list type="bullet">
+        /// <item><description>When <see cref="Run"/> method is called.</description></item>
+        /// <item><description>When TimerManager is disposed</description></item>
+        /// <item><description>When TimerBuilder is used in a different frame then is was created</description></item>
+        /// </list>
+        /// </summary>
+        public bool IsValid { get; }
+
         internal void Setup(WeakReference<TimerManager> manager, long internalId)
         {
             
@@ -29,7 +40,8 @@ namespace Damdor.Temporio
         /// <returns>
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
-        /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
+        /// <exception cref="InvalidOperationException">Thrown initial time was already setup by this or <see cref="After(TimeSpan)"/> method.</exception>
         public TimerBuilder When(DateTime invocationTime) => this;
 
         /// <summary>
@@ -43,7 +55,9 @@ namespace Damdor.Temporio
         /// <returns>
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
-        /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
+        /// <exception cref="InvalidOperationException">Thrown initial time was already setup by this or <see cref="When(DateTime)"/> method.</exception>
+
         public TimerBuilder After(TimeSpan timeFromNow) => this;
 
         /// <summary>
@@ -56,8 +70,7 @@ namespace Damdor.Temporio
         /// <returns>
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
-        /// <exception cref="ArgumentException">Thrown when the provided period less of equal 0</exception>
-        /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         public TimerBuilder Every(TimeSpan period) => this;
 
         /// <summary>
@@ -69,6 +82,7 @@ namespace Damdor.Temporio
         /// <returns>
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         public TimerBuilder InvocationLimit(int limit) => this;
 
         /// <summary>
@@ -84,7 +98,7 @@ namespace Damdor.Temporio
         /// <returns>
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
-        /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         public TimerBuilder MissingPeriodBehaviour(MissingPeriodBehaviour behaviour) => this;
 
         /// <summary>
@@ -98,7 +112,7 @@ namespace Damdor.Temporio
         /// <returns>
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
-        /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         public TimerBuilder Action(TimerAction action) => this;
 
         /// <summary>
@@ -114,6 +128,7 @@ namespace Damdor.Temporio
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
         /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         public TimerBuilder Action(TimerActionWithContext action) => this;
 
         /// <summary>
@@ -134,6 +149,7 @@ namespace Damdor.Temporio
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
         /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         public TimerBuilder Action<T>(T parameter, TimerActionWithParameter<T> action) => this;
 
         /// <summary>
@@ -154,7 +170,7 @@ namespace Damdor.Temporio
         /// <returns>
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
-        /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         public TimerBuilder Action<T>(T parameter, TimerActionWithContextAndParameter<T> action) => this;
 
         /// <summary>
@@ -168,7 +184,7 @@ namespace Damdor.Temporio
         /// <returns>
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
-        /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         public TimerBuilder Timing(PlayerLoopTiming timing) => this;
 
         /// <summary>
@@ -183,7 +199,7 @@ namespace Damdor.Temporio
         /// <returns>
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
-        /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         public TimerBuilder CancelOnDestroy(GameObject owner) => this;
 
         /// <summary>
@@ -198,7 +214,7 @@ namespace Damdor.Temporio
         /// <returns>
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
-        /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         public TimerBuilder CancelIf(TimerGuardCondition condition) => this;
 
         /// <summary>
@@ -220,7 +236,7 @@ namespace Damdor.Temporio
         /// <returns>
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
-        /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         public TimerBuilder CancelIf<T>(T parameter, ParametrizeTimerGuardCondition<T> condition) => this;
 
         /// <summary>
@@ -233,7 +249,7 @@ namespace Damdor.Temporio
         /// <returns>
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
-        /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         public TimerBuilder DebugName(string name) => this;
 
         /// <summary>
@@ -249,9 +265,7 @@ namespace Damdor.Temporio
         /// The returned <see cref="Timer"/> can be used to query the timer's status,
         /// manage its lifecycle, and access other runtime characteristics.
         /// </returns>
-        /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         public Timer Run() => new();
-        
-        internal void Reset() { }
     }
 }

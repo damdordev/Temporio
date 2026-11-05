@@ -5,7 +5,7 @@ namespace Damdor.Temporio
 {
     internal class InternalTimerBuilder
     {
-        public long InstanceId { get; }
+        public long InternalId { get; }
         public DateTime StartTime { get; set; }
         public bool IsRepeating { get; set; }
         public TimeSpan RepeatInterval { get; set; }
@@ -13,6 +13,8 @@ namespace Damdor.Temporio
         public List<TimerGuard> Guards { get; } = new();
         public string DebugName { get; set; }
         public int InvocationLimit { get; set; }
+        public MissingPeriodBehaviour MissingPeriodBehaviour { get; set; }
+        public PlayerLoopTiming Timing { get; set; }
         
         internal void Reset()
         {

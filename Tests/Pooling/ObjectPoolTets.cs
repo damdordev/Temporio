@@ -1,8 +1,7 @@
 using System;
-using Damdor.Temporio;
 using NUnit.Framework;
 
-namespace Damdor.Temporio.Tests.Pooling
+namespace Damdor.Temporio.Tests
 {
     public class ObjectPoolTets
     {
