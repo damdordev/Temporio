@@ -148,7 +148,7 @@ namespace Damdor.Temporio
             var builder = GetInternalTimerBuilderOrThrow();
             if (action == null) return this;
             timerManager.TryGetTarget(out var manager);
-            var invocation = manager.Pooling.PopTimerInvocationWithoutParameter();
+            var invocation = manager!.Pooling.PopTimerInvocationWithoutParameter();
             invocation.Action = action;
             builder.Invocations.Add(invocation);
             return this;
@@ -172,7 +172,7 @@ namespace Damdor.Temporio
             var builder = GetInternalTimerBuilderOrThrow();
             if (action == null) return this;
             timerManager.TryGetTarget(out var manager);
-            var invocation = manager.Pooling.PopTimerInvocationWithoutParameter();
+            var invocation = manager!.Pooling.PopTimerInvocationWithoutParameter();
             invocation.ActionWithContext = action;
             builder.Invocations.Add(invocation);
             return this;
@@ -201,7 +201,7 @@ namespace Damdor.Temporio
             var builder = GetInternalTimerBuilderOrThrow();
             if (action == null) return this;
             timerManager.TryGetTarget(out var manager);
-            var invocation = manager.Pooling.PopTimerInvocationWithParameter<T>();
+            var invocation = manager!.Pooling.PopTimerInvocationWithParameter<T>();
             invocation.Action = action;
             invocation.Parameter = parameter;
             builder.Invocations.Add(invocation);
@@ -232,7 +232,7 @@ namespace Damdor.Temporio
             var builder = GetInternalTimerBuilderOrThrow();
             if (action == null) return this;
             timerManager.TryGetTarget(out var manager);
-            var invocation = manager.Pooling.PopTimerInvocationWithParameter<T>();
+            var invocation = manager!.Pooling.PopTimerInvocationWithParameter<T>();
             invocation.ActionWithContext = action;
             invocation.Parameter = parameter;
             builder.Invocations.Add(invocation);
@@ -274,7 +274,7 @@ namespace Damdor.Temporio
         {
             var builder = GetInternalTimerBuilderOrThrow();
             timerManager.TryGetTarget(out var manager);
-            var guard = manager.Pooling.PopGameObjectTimerGuard();
+            var guard = manager!.Pooling.PopGameObjectTimerGuard();
             guard.Setup(owner);
             builder.Guards.Add(guard);
             return this;
@@ -298,7 +298,7 @@ namespace Damdor.Temporio
             var builder = GetInternalTimerBuilderOrThrow();
             if (condition == null) return this;
             timerManager.TryGetTarget(out var manager);
-            var guard = manager.Pooling.PopConditionTimerGuard();
+            var guard = manager!.Pooling.PopConditionTimerGuard();
             guard.Setup(condition);
             builder.Guards.Add(guard);
             return this;
@@ -329,7 +329,7 @@ namespace Damdor.Temporio
             var builder = GetInternalTimerBuilderOrThrow();
             if (condition == null) return this;
             timerManager.TryGetTarget(out var manager);
-            var guard = manager.Pooling.PopParametrizeConditionTimerGuard<T>();
+            var guard = manager!.Pooling.PopParametrizeConditionTimerGuard<T>();
             guard.Setup(condition, parameter);
             builder.Guards.Add(guard);
             return this;

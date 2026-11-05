@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace Damdor.Temporio
 {
@@ -20,6 +19,7 @@ namespace Damdor.Temporio
         internal void ReleaseInternalTimer(InternalTimer data) => internalTimerPool.Release(data);
 
         internal TimerInvocationWithoutParameter PopTimerInvocationWithoutParameter() => timerInvocationWithoutParameterPool.Pop();
+        // ReSharper disable once MemberCanBeMadeStatic.Global
         internal TimerInvocationWithParameter<T> PopTimerInvocationWithParameter<T>() => new();
         internal void ReleaseTimerInvocation(TimerInvocation invocation)
         {
@@ -34,6 +34,7 @@ namespace Damdor.Temporio
 
         internal GameObjectTimerGuard PopGameObjectTimerGuard() => gameObjectTimerGuardPool.Pop();
         internal ConditionTimerGuard PopConditionTimerGuard() => conditionTimerGuardPool.Pop();
+        // ReSharper disable once MemberCanBeMadeStatic.Global
         internal ParametrizeConditionTimerGuard<T> PopParametrizeConditionTimerGuard<T>() => new();
         internal void ReleaseGuard(TimerGuard guard)
         {

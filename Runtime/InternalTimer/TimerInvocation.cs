@@ -27,6 +27,7 @@ namespace Damdor.Temporio
 
     internal abstract class TimerInvocationWithParameter : TimerInvocation
     {
+        // ReSharper disable once UnusedMember.Global
         public abstract Type ParameterType { get; }
     }
     
@@ -43,6 +44,7 @@ namespace Damdor.Temporio
             ActionWithContext?.Invoke(context, Parameter);
         }
         
+        // ReSharper disable once UnusedMember.Global
         internal void Reset()
         {
             Action = null;

@@ -22,6 +22,6 @@ namespace Damdor.Temporio
         /// <summary>
         /// Processes update timers during the late update phase of the player loop.
         /// </summary>
-        LateUpdate,
+        LateUpdate
     }
 }

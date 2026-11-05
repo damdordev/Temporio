@@ -121,7 +121,7 @@ namespace Damdor.Temporio
         /// Affects only timers that are periodic.
         /// Actions in the current invocation will still be executed.
         /// </summary>
-        public bool CancelTimerOnException { get; set; } = false;
+        public bool CancelTimerOnException { get; set; }
         
         internal InternalTimer GetInternalTimer(long internalId)
             => timers.GetValueOrDefault(internalId);
@@ -141,8 +141,7 @@ namespace Damdor.Temporio
 
         internal bool CancelTimer(long internalId)
         {
-            if (!timers.TryGetValue(internalId, out var timer)) return false;
-            timers.Remove(internalId);
+            if (!timers.Remove(internalId, out var timer)) return false;
             if (timer != executingTimer) ReleaseInternalTimer(timer);
             return true;
         }

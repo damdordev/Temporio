@@ -18,8 +18,11 @@ namespace Damdor.Temporio
         }
 
         public override bool Check() => gameObject != null;
-        
-        internal void Reset() {}
+
+        internal void Reset()
+        {
+            gameObject = null;
+        }
     }
 
     internal class ConditionTimerGuard : TimerGuard
@@ -32,13 +35,18 @@ namespace Damdor.Temporio
         }
 
         public override bool Check() => !condition();
-        
-        internal void Reset() {}
+
+        internal void Reset()
+        {
+            condition = null;
+        }
     }
 
     internal abstract class ParametrizeConditionTimerGuard : TimerGuard
     {
+        // ReSharper disable once UnusedMember.Global
         public abstract Type ParameterType { get; }
+        // ReSharper disable once UnusedMemberHierarchy.Global
         internal virtual void Reset() {}
     }
         
@@ -56,6 +64,13 @@ namespace Damdor.Temporio
         }
 
         public override bool Check() => !condition(parameter);
+
+        internal override void Reset()
+        {
+            base.Reset();
+            condition = null;
+            parameter = default;
+        }
     }
     
 }
