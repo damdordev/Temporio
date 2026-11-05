@@ -4,7 +4,8 @@ using UnityEngine;
 
 namespace Damdor.Temporio
 {
-    internal sealed class ObjectPool<T> where T : class
+    internal sealed class ObjectPool<T> : IDisposable
+        where T : class
     {
         private readonly Stack<T> items = new();
         private readonly Action<T> reset;
@@ -50,6 +51,11 @@ namespace Damdor.Temporio
             if (item == null) return;
             reset(item);
             if (items.Count < maxSize) items.Push(item);
+        }
+
+        public void Dispose()
+        {
+            items.Clear();
         }
     }
 }

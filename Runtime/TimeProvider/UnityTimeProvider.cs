@@ -13,7 +13,7 @@ namespace Damdor.Temporio
     /// </remarks>
     public class UnityTimeProvider : ITimeProvider
     {
-        public DateTime Now => startDateTime + TimeSpan.FromSeconds(GetUnityTime() - startUnityTime);
+        public virtual DateTime Now => startDateTime + TimeSpan.FromSeconds(GetUnityTime() - startUnityTime);
 
         private readonly DateTime startDateTime;
         private readonly float startUnityTime;
@@ -27,7 +27,5 @@ namespace Damdor.Temporio
         }
         
         private float GetUnityTime() => useScaledTime ? Time.time : Time.realtimeSinceStartup;
-
-        public void Dispose() { }
     }
 }

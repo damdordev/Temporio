@@ -48,10 +48,15 @@ namespace Damdor.Temporio
                     break;
             }
         }
-        
+
 
         public void Dispose()
         {
+            internalTimerPool.Dispose();
+            timerInvocationWithoutParameterPool.Dispose();
+            gameObjectTimerGuardPool.Dispose();
+            conditionTimerGuardPool.Dispose();
+            timerBuilderPool.Dispose();
         }
     }
 }

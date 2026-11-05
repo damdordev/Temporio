@@ -10,8 +10,6 @@ namespace Damdor.Temporio
     /// </remarks>
     public class LocalTimeProvider : ITimeProvider
     {
-        public DateTime Now => DateTime.Now;
-
-        public void Dispose() { }
+        public virtual DateTime Now => DateTime.Now;
     }
 }

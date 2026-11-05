@@ -18,7 +18,5 @@ namespace Damdor.Temporio
         {
             Now = now;
         }
-
-        public void Dispose() { }
     }
 }
