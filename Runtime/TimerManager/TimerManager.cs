@@ -73,7 +73,7 @@ namespace Damdor.Temporio
             ClearTimerBuilders();
             foreach (var timer in timers.Values)
             {
-                if (timer != executingTimer) Pooling.ReleaseInternalTimer(timer);
+                if (timer != executingTimer) ReleaseInternalTimer(timer);
             }
 
             timers.Clear();
@@ -143,7 +143,7 @@ namespace Damdor.Temporio
         {
             if (!timers.TryGetValue(internalId, out var timer)) return false;
             timers.Remove(internalId);
-            if (timer != executingTimer) Pooling.ReleaseInternalTimer(timer);
+            if (timer != executingTimer) ReleaseInternalTimer(timer);
             return true;
         }
 
@@ -195,7 +195,6 @@ namespace Damdor.Temporio
             try
             {
                 var now = Now;
-                // Callbacks can add or cancel timers without changing this update's work list.
                 updateTimers.AddRange(timers.Keys);
                 foreach (var internalId in updateTimers)
                 {
@@ -209,7 +208,7 @@ namespace Damdor.Temporio
                     finally
                     {
                         executingTimer = null;
-                        if (!timers.ContainsKey(internalId)) Pooling.ReleaseInternalTimer(timer);
+                        if (!timers.ContainsKey(internalId)) ReleaseInternalTimer(timer);
                     }
                 }
             }
@@ -262,7 +261,6 @@ namespace Damdor.Temporio
                 var periods = timer.MissingPeriodBehaviour == MissingPeriodBehaviour.RunAll
                     ? 1
                     : (now - timer.NextInvocationTime).Ticks / timer.RepeatInterval.Ticks + 1;
-                // There may be no representable next DateTime near DateTime.MaxValue.
                 if (periods > (DateTime.MaxValue.Ticks - timer.NextInvocationTime.Ticks) / timer.RepeatInterval.Ticks)
                 {
                     CancelTimer(timer.InternalId);
@@ -284,5 +282,15 @@ namespace Damdor.Temporio
                 if (LogErrors) UnityEngine.Debug.LogException(handlerException);
             }
         }
+        
+        private void ReleaseInternalTimer(InternalTimer internalTimer)
+        {
+            foreach (var invocation in internalTimer.Invocations) Pooling.ReleaseTimerInvocation(invocation);
+            foreach (var guard in internalTimer.Guards) Pooling.ReleaseGuard(guard);
+
+            Pooling.ReleaseInternalTimer(internalTimer);
+        }
+        
+        
     }
 }

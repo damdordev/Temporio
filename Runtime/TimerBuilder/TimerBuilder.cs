@@ -148,7 +148,7 @@ namespace Damdor.Temporio
             var builder = GetInternalTimerBuilderOrThrow();
             if (action == null) return this;
             timerManager.TryGetTarget(out var manager);
-            var invocation = manager.Pooling.PopTimerInvocationDataWithoutParameter();
+            var invocation = manager.Pooling.PopTimerInvocationWithoutParameter();
             invocation.Action = action;
             builder.Invocations.Add(invocation);
             return this;
@@ -172,7 +172,7 @@ namespace Damdor.Temporio
             var builder = GetInternalTimerBuilderOrThrow();
             if (action == null) return this;
             timerManager.TryGetTarget(out var manager);
-            var invocation = manager.Pooling.PopTimerInvocationDataWithoutParameter();
+            var invocation = manager.Pooling.PopTimerInvocationWithoutParameter();
             invocation.ActionWithContext = action;
             builder.Invocations.Add(invocation);
             return this;
@@ -201,7 +201,7 @@ namespace Damdor.Temporio
             var builder = GetInternalTimerBuilderOrThrow();
             if (action == null) return this;
             timerManager.TryGetTarget(out var manager);
-            var invocation = manager.Pooling.PopTimerInvocationDataWithParameter<T>();
+            var invocation = manager.Pooling.PopTimerInvocationWithParameter<T>();
             invocation.Action = action;
             invocation.Parameter = parameter;
             builder.Invocations.Add(invocation);
@@ -232,7 +232,7 @@ namespace Damdor.Temporio
             var builder = GetInternalTimerBuilderOrThrow();
             if (action == null) return this;
             timerManager.TryGetTarget(out var manager);
-            var invocation = manager.Pooling.PopTimerInvocationDataWithParameter<T>();
+            var invocation = manager.Pooling.PopTimerInvocationWithParameter<T>();
             invocation.ActionWithContext = action;
             invocation.Parameter = parameter;
             builder.Invocations.Add(invocation);
