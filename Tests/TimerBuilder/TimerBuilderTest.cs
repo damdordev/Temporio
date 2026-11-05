@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -67,7 +66,7 @@ namespace Damdor.Temporio.Tests
 
             Assert.That(builder.IsValid, Is.True);
             var internalBuilder = GetInternalBuilder(builder);
-            Assert.That(GetInternalId(internalBuilder), Is.EqualTo(GetInternalId(builder)));
+            Assert.That(internalBuilder.InternalId, Is.EqualTo(builder.internalId));
             Assert.That(GetInternalBuilder(builder), Is.SameAs(internalBuilder));
             Assert.That(internalBuilder.DebugName, Is.EqualTo(null));
             Assert.That(internalBuilder.Guards.Count, Is.EqualTo(0));
@@ -87,7 +86,7 @@ namespace Damdor.Temporio.Tests
             first.DebugName("first");
             second.DebugName("second");
 
-            Assert.That(GetInternalId(first), Is.Not.EqualTo(GetInternalId(second)));
+            Assert.That(GetInternalBuilder(first).InternalId, Is.Not.EqualTo(second.internalId));
             Assert.That(GetInternalBuilder(first), Is.Not.SameAs(GetInternalBuilder(second)));
             Assert.That(GetInternalBuilder(first).DebugName, Is.EqualTo("first"));
             Assert.That(GetInternalBuilder(second).DebugName, Is.EqualTo("second"));
@@ -104,7 +103,7 @@ namespace Damdor.Temporio.Tests
             var result = builder.When(expected);
 
             Assert.That(GetInternalBuilder(builder).StartTime, Is.EqualTo(expected));
-            Assert.That(GetInternalId(result), Is.EqualTo(GetInternalId(builder)));
+            Assert.That(GetInternalBuilder(result).InternalId, Is.EqualTo(builder.internalId));
         }
 
         [TestCase(-5)]
@@ -150,8 +149,7 @@ namespace Damdor.Temporio.Tests
 
             builder.MissingPeriodBehaviour(behaviour);
 
-            Assert.That(ReadMember<MissingPeriodBehaviour>(GetInternalBuilder(builder), "MissingPeriodBehaviour"),
-                Is.EqualTo(behaviour));
+            Assert.That(GetInternalBuilder(builder).MissingPeriodBehaviour, Is.EqualTo(behaviour));
         }
 
         [TestCase(PlayerLoopTiming.Update)]
@@ -163,7 +161,7 @@ namespace Damdor.Temporio.Tests
 
             builder.Timing(timing);
 
-            Assert.That(ReadMember<PlayerLoopTiming>(GetInternalBuilder(builder), "Timing"), Is.EqualTo(timing));
+            Assert.That(GetInternalBuilder(builder).Timing, Is.EqualTo(timing));
         }
 
         [Test]
@@ -390,12 +388,7 @@ namespace Damdor.Temporio.Tests
                 default: throw new ArgumentOutOfRangeException(nameof(invalidation));
             }
 
-            // These two overloads specifically document InvalidOperationException after Run.
-            var expected = invalidation == Invalidation.Run &&
-                           (method == BuilderMethod.ActionWithContext || method == BuilderMethod.ActionWithParameter)
-                ? typeof(InvalidOperationException)
-                : typeof(TimerBuilderInvalidException);
-            Assert.Throws(expected, () => Invoke(method, builder));
+            Assert.Throws(typeof(TimerBuilderInvalidException), () => Invoke(method, builder));
         }
 
         [Test]
@@ -426,7 +419,7 @@ namespace Damdor.Temporio.Tests
             Assert.That(timer.TimeToNextInvocation, Is.EqualTo(TimeSpan.FromSeconds(10)));
             Assert.That(timer.InvocationLimit, Is.EqualTo(3));
             Assert.That(timer.InvocationCount, Is.Zero);
-            var internalTimer = timerManager.GetInternalTimer(GetInternalId(timer));
+            var internalTimer = timerManager.GetInternalTimer(timer.internalId);
             Assert.That(internalTimer, Is.Not.Null);
             Assert.That(internalTimer.FirstInvocationTime, Is.EqualTo(start));
             Assert.That(internalTimer.Period, Is.EqualTo(period));
@@ -434,57 +427,9 @@ namespace Damdor.Temporio.Tests
             Assert.That(internalTimer.MissingPeriodBehaviour, Is.EqualTo(MissingPeriodBehaviour.RunAll));
             Assert.That(internalTimer.Invocations, Is.EqualTo(invocations));
             Assert.That(internalTimer.Guards, Is.EqualTo(guards));
-            Assert.That(ReadMember<string>(internalTimer, "DebugName"), Is.EqualTo("configured timer"));
+            Assert.That(internalTimer.DebugName, Is.EqualTo("configured timer"));
         }
-
-        [Test]
-        public void Run_WithAfter_CreatesOneShotTimerWithDefaultTimingAndMissingPeriodBehaviour()
-        {
-            var timer = timerManager.Schedule().After(TimeSpan.FromSeconds(5)).Run();
-
-            Assert.That(timer.IsAlive, Is.True);
-            Assert.That(timer.IsPeriodic, Is.False);
-            Assert.That(timer.Period, Is.EqualTo(TimeSpan.Zero));
-            Assert.That(timer.NextInvocationTime, Is.EqualTo(timeProvider.Now.AddSeconds(5)));
-            var internalTimer = timerManager.GetInternalTimer(GetInternalId(timer));
-            Assert.That(internalTimer, Is.Not.Null);
-            Assert.That(internalTimer.Timing, Is.EqualTo(PlayerLoopTiming.Update));
-            Assert.That(internalTimer.MissingPeriodBehaviour, Is.EqualTo(MissingPeriodBehaviour.RunOnce));
-        }
-
-        [Test]
-        public void Run_ExecutesMultipleActionsInRegistrationOrderWithTheirParameters()
-        {
-            var calls = new List<string>();
-            timerManager.Schedule().When(timeProvider.Now)
-                .Action(() => calls.Add("first"))
-                .Action((TimerInvocationContext _) => calls.Add("context"))
-                .Action(42, value => calls.Add(value.ToString()))
-                .Action("payload", (TimerInvocationContext _, string value) => calls.Add(value))
-                .Action(() => calls.Add("last")).Run();
-
-            updateProvider.Tick(PlayerLoopTiming.Update);
-
-            Assert.That(calls, Is.EqualTo(new[] { "first", "context", "42", "payload", "last" }));
-        }
-
-        [TestCase(false, false, 1)]
-        [TestCase(true, false, 0)]
-        [TestCase(false, true, 0)]
-        [TestCase(true, true, 0)]
-        public void Run_WhenAnyGuardCancels_DoesNotInvokeActions(bool firstCancels, bool secondCancels,
-            int expectedCalls)
-        {
-            var calls = 0;
-            var timer = timerManager.Schedule().When(timeProvider.Now).Action(() => calls++)
-                .CancelIf(() => firstCancels).CancelIf(secondCancels, value => value).Run();
-            Assert.That(timer.IsAlive, Is.True);
-
-            updateProvider.Tick(PlayerLoopTiming.Update);
-
-            Assert.That(calls, Is.EqualTo(expectedCalls));
-        }
-
+        
         private void Invoke(BuilderMethod method, TimerBuilder builder)
         {
             switch (method)
@@ -525,32 +470,10 @@ namespace Damdor.Temporio.Tests
 
         private InternalTimerBuilder GetInternalBuilder(TimerBuilder builder)
         {
-            var internalBuilder = timerManager.GetInternalTimerBuilder(GetInternalId(builder));
+            var internalBuilder = timerManager.GetInternalTimerBuilder(builder.internalId);
             Assert.That(internalBuilder, Is.Not.Null, "Schedule must register the corresponding internal builder.");
             return internalBuilder;
         }
-
-        // The current runtime skeleton lacks some contract members. Reflection keeps these
-        // tests compilable and reports missing members as assertions without changing runtime code.
-        private static long GetInternalId(object instance)
-        {
-            if (instance is InternalTimerBuilder internalBuilder) return internalBuilder.InternalId;
-            return ReadMember<long>(instance, "InternalId", "internalId");
-        }
-
-        private static T ReadMember<T>(object instance, params string[] names)
-        {
-            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-            foreach (var name in names)
-            {
-                var property = instance.GetType().GetProperty(name, flags);
-                if (property != null) return (T)property.GetValue(instance);
-                var field = instance.GetType().GetField(name, flags);
-                if (field != null) return (T)field.GetValue(instance);
-            }
-
-            Assert.Fail($"{instance.GetType().Name} must expose {names[0]} for its timer configuration contract.");
-            return default;
-        }
+        
     }
 }

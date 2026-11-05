@@ -11,8 +11,11 @@ namespace Damdor.Temporio
     /// Builder is short-lived and can be used only in the frame in which it was created.
     /// </para>
     /// </summary>
-    public readonly struct TimerBuilder
+    public struct TimerBuilder
     {
+        private WeakReference<TimerManager> timerManager;
+        internal long internalId;
+
         /// <summary>
         /// Gets a value indicating whether this builder is still valid and can be used to configure and run the timer.
         /// Builder can be invalidated in following cases:
@@ -22,11 +25,12 @@ namespace Damdor.Temporio
         /// <item><description>When TimerBuilder is used in a different frame then is was created</description></item>
         /// </list>
         /// </summary>
-        public bool IsValid { get; }
+        public bool IsValid => GetInternalTimerBuilder() != null;
 
-        internal void Setup(WeakReference<TimerManager> manager, long internalId)
+        internal void Setup(WeakReference<TimerManager> timerManager, long internalId)
         {
-            
+            this.timerManager = timerManager;
+            this.internalId = internalId;
         }
 
         /// <summary>
@@ -42,7 +46,14 @@ namespace Damdor.Temporio
         /// </returns>
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         /// <exception cref="InvalidOperationException">Thrown initial time was already setup by this or <see cref="After(TimeSpan)"/> method.</exception>
-        public TimerBuilder When(DateTime invocationTime) => this;
+        public TimerBuilder When(DateTime invocationTime)
+        {
+            var builder = GetInternalTimerBuilderOrThrow();
+            if (builder.HasStartTime) throw new InvalidOperationException("Initial time is already configured.");
+            builder.StartTime = invocationTime;
+            builder.HasStartTime = true;
+            return this;
+        }
 
         /// <summary>
         /// Specifies the time from now at which the timer will be invoked.
@@ -58,7 +69,12 @@ namespace Damdor.Temporio
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         /// <exception cref="InvalidOperationException">Thrown initial time was already setup by this or <see cref="When(DateTime)"/> method.</exception>
 
-        public TimerBuilder After(TimeSpan timeFromNow) => this;
+        public TimerBuilder After(TimeSpan timeFromNow)
+        {
+            GetInternalTimerBuilderOrThrow();
+            timerManager.TryGetTarget(out var manager);
+            return When(manager!.Now + timeFromNow);
+        }
 
         /// <summary>
         /// Sets a periodic invocation interval for the timer.
@@ -71,7 +87,13 @@ namespace Damdor.Temporio
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
-        public TimerBuilder Every(TimeSpan period) => this;
+        public TimerBuilder Every(TimeSpan period)
+        {
+            var builder = GetInternalTimerBuilderOrThrow();
+            builder.IsRepeating = true;
+            builder.RepeatInterval = period;
+            return this;
+        }
 
         /// <summary>
         /// Sets the maximum number of times the timer may be invoked before it stops. The number includes the initial invocation.
@@ -83,7 +105,11 @@ namespace Damdor.Temporio
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
-        public TimerBuilder InvocationLimit(int limit) => this;
+        public TimerBuilder InvocationLimit(int limit)
+        {
+            GetInternalTimerBuilderOrThrow().InvocationLimit = limit;
+            return this;
+        }
 
         /// <summary>
         /// Defines the behavior of the timer when one or more periods have been missed
@@ -99,7 +125,11 @@ namespace Damdor.Temporio
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
-        public TimerBuilder MissingPeriodBehaviour(MissingPeriodBehaviour behaviour) => this;
+        public TimerBuilder MissingPeriodBehaviour(MissingPeriodBehaviour behaviour)
+        {
+            GetInternalTimerBuilderOrThrow().MissingPeriodBehaviour = behaviour;
+            return this;
+        }
 
         /// <summary>
         /// Specifies the action to execute when the timer is triggered.
@@ -113,7 +143,16 @@ namespace Damdor.Temporio
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
-        public TimerBuilder Action(TimerAction action) => this;
+        public TimerBuilder Action(TimerAction action)
+        {
+            var builder = GetInternalTimerBuilderOrThrow();
+            if (action == null) return this;
+            timerManager.TryGetTarget(out var manager);
+            var invocation = manager.Pooling.PopTimerInvocationDataWithoutParameter();
+            invocation.Action = action;
+            builder.Invocations.Add(invocation);
+            return this;
+        }
 
         /// <summary>
         /// Defines the action to be performed when the timer is triggered.
@@ -127,9 +166,17 @@ namespace Damdor.Temporio
         /// <returns>
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
-        /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
-        public TimerBuilder Action(TimerActionWithContext action) => this;
+        public TimerBuilder Action(TimerActionWithContext action)
+        {
+            var builder = GetInternalTimerBuilderOrThrow();
+            if (action == null) return this;
+            timerManager.TryGetTarget(out var manager);
+            var invocation = manager.Pooling.PopTimerInvocationDataWithoutParameter();
+            invocation.ActionWithContext = action;
+            builder.Invocations.Add(invocation);
+            return this;
+        }
 
         /// <summary>
         /// Specifies the action to execute when the timer is triggered.
@@ -148,9 +195,18 @@ namespace Damdor.Temporio
         /// <returns>
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
-        /// <exception cref="InvalidOperationException">Thrown if used on a builder already used to create a timer (method <see cref="Run"/> has been called).</exception>
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
-        public TimerBuilder Action<T>(T parameter, TimerActionWithParameter<T> action) => this;
+        public TimerBuilder Action<T>(T parameter, TimerActionWithParameter<T> action)
+        {
+            var builder = GetInternalTimerBuilderOrThrow();
+            if (action == null) return this;
+            timerManager.TryGetTarget(out var manager);
+            var invocation = manager.Pooling.PopTimerInvocationDataWithParameter<T>();
+            invocation.Action = action;
+            invocation.Parameter = parameter;
+            builder.Invocations.Add(invocation);
+            return this;
+        }
 
         /// <summary>
         /// Specifies the action to execute when the timer is triggered, with access to context information and a parameter.
@@ -171,7 +227,17 @@ namespace Damdor.Temporio
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
-        public TimerBuilder Action<T>(T parameter, TimerActionWithContextAndParameter<T> action) => this;
+        public TimerBuilder Action<T>(T parameter, TimerActionWithContextAndParameter<T> action)
+        {
+            var builder = GetInternalTimerBuilderOrThrow();
+            if (action == null) return this;
+            timerManager.TryGetTarget(out var manager);
+            var invocation = manager.Pooling.PopTimerInvocationDataWithParameter<T>();
+            invocation.ActionWithContext = action;
+            invocation.Parameter = parameter;
+            builder.Invocations.Add(invocation);
+            return this;
+        }
 
         /// <summary>
         /// Specifies the timing within the Unity player loop at which the timer will be executed.
@@ -185,7 +251,11 @@ namespace Damdor.Temporio
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
-        public TimerBuilder Timing(PlayerLoopTiming timing) => this;
+        public TimerBuilder Timing(PlayerLoopTiming timing)
+        {
+            GetInternalTimerBuilderOrThrow().Timing = timing;
+            return this;
+        }
 
         /// <summary>
         /// Ensures that the timer is associated with a specific owner and will only remain active
@@ -200,7 +270,15 @@ namespace Damdor.Temporio
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
-        public TimerBuilder CancelOnDestroy(GameObject owner) => this;
+        public TimerBuilder CancelOnDestroy(GameObject owner)
+        {
+            var builder = GetInternalTimerBuilderOrThrow();
+            timerManager.TryGetTarget(out var manager);
+            var guard = manager.Pooling.PopGameObjectTimerGuard();
+            guard.Setup(owner);
+            builder.Guards.Add(guard);
+            return this;
+        }
 
         /// <summary>
         /// Adds a guard condition to the timer that determines whether the timer should execute.
@@ -215,7 +293,16 @@ namespace Damdor.Temporio
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
-        public TimerBuilder CancelIf(TimerGuardCondition condition) => this;
+        public TimerBuilder CancelIf(TimerGuardCondition condition)
+        {
+            var builder = GetInternalTimerBuilderOrThrow();
+            if (condition == null) return this;
+            timerManager.TryGetTarget(out var manager);
+            var guard = manager.Pooling.PopConditionTimerGuard();
+            guard.Setup(condition);
+            builder.Guards.Add(guard);
+            return this;
+        }
 
         /// <summary>
         /// Defines a guard condition for the timer, allowing the timer's execution
@@ -237,7 +324,16 @@ namespace Damdor.Temporio
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
-        public TimerBuilder CancelIf<T>(T parameter, ParametrizeTimerGuardCondition<T> condition) => this;
+        public TimerBuilder CancelIf<T>(T parameter, ParametrizeTimerGuardCondition<T> condition)
+        {
+            var builder = GetInternalTimerBuilderOrThrow();
+            if (condition == null) return this;
+            timerManager.TryGetTarget(out var manager);
+            var guard = manager.Pooling.PopParametrizeConditionTimerGuard<T>();
+            guard.Setup(condition, parameter);
+            builder.Guards.Add(guard);
+            return this;
+        }
 
         /// <summary>
         /// Assigns a debug name to the timer for identification purposes during development and debugging.
@@ -250,7 +346,11 @@ namespace Damdor.Temporio
         /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
         /// </returns>
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
-        public TimerBuilder DebugName(string name) => this;
+        public TimerBuilder DebugName(string name)
+        {
+            GetInternalTimerBuilderOrThrow().DebugName = name;
+            return this;
+        }
 
         /// <summary>
         /// Finalizes the configuration of the timer and initiates its execution. This method can be used only
@@ -266,6 +366,23 @@ namespace Damdor.Temporio
         /// manage its lifecycle, and access other runtime characteristics.
         /// </returns>
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
-        public Timer Run() => new();
+        public Timer Run()
+        {
+            var builder = GetInternalTimerBuilderOrThrow();
+            timerManager.TryGetTarget(out var manager);
+            return manager!.RunTimer(builder);
+        }
+        
+        private InternalTimerBuilder GetInternalTimerBuilder()
+        {
+            return timerManager != null && timerManager.TryGetTarget(out var manager)
+                ? manager.GetInternalTimerBuilder(internalId)
+                : null;
+        }
+
+        private InternalTimerBuilder GetInternalTimerBuilderOrThrow()
+        {
+            return GetInternalTimerBuilder() ?? throw new TimerBuilderInvalidException();
+        }
     }
 }

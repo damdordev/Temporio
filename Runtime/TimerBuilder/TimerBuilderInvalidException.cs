@@ -2,8 +2,5 @@ using System;
 
 namespace Damdor.Temporio
 {
-    public class TimerBuilderInvalidException : Exception
-    {
-        
-    }
+    public class TimerBuilderInvalidException : Exception { }
 }

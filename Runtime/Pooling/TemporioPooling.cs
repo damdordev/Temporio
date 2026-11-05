@@ -29,8 +29,8 @@ namespace Damdor.Temporio
         internal TimerInvocationWithParameter<T> PopTimerInvocationDataWithParameter<T>() => new();
         internal void ReleaseTimerInvocationDataWithParameter(TimerInvocationWithParameter invocation) {}
         
-        internal InternalTimerBuilder PopInternalTimerBuilder() => new InternalTimerBuilder();
-        internal void ReleaseInternalTimerBuilder(InternalTimerBuilder timerBuilder) {}
+        internal InternalTimerBuilder PopInternalTimerBuilder() => timerBuilderPool.Pop();
+        internal void ReleaseInternalTimerBuilder(InternalTimerBuilder timerBuilder) => timerBuilderPool.Release(timerBuilder);
         
         internal GameObjectTimerGuard PopGameObjectTimerGuard() => new GameObjectTimerGuard();
         internal void ReleaseGameObjectTimerGuard(GameObjectTimerGuard guard) {}

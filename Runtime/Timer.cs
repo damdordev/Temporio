@@ -85,7 +85,7 @@ namespace Damdor.Temporio
         public int InvocationCount => timerManager.TryGetTarget(out var manager) ? manager.GetInvocationCount(internalId) : 0;
 
         private readonly WeakReference<TimerManager> timerManager;
-        private readonly long internalId;
+        internal readonly long internalId;
         
         internal Timer(WeakReference<TimerManager> timerManager, long internalId)
         {

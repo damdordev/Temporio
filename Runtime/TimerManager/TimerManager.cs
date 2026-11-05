@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Damdor.Temporio
 {
@@ -12,12 +13,17 @@ namespace Damdor.Temporio
         /// <summary>
         /// Current time for this timer manager. Value is taken from <see cref="ITimeProvider"/>.
         /// </summary>
-        public DateTime Now { get; }
+        public DateTime Now => timeProvider.Now;
+        
+        internal TemporioPooling Pooling { get; }
         
         private readonly WeakReference<TimerManager> weakReference;
         private readonly ITimeProvider timeProvider;
         private readonly IUpdateProvider updateProvider;
-        private readonly TemporioPooling pooling;
+
+        private readonly Dictionary<long, InternalTimerBuilder> timerBuilders = new();
+        private long lastTimerBuilderInternalId;
+        private bool isDisposed;
         
         /// <summary>
         /// Creates a new instance of <see cref="TimerManager"/>. Both <see cref="ITimeProvider"/> and <see cref="IUpdateProvider"/>
@@ -31,7 +37,7 @@ namespace Damdor.Temporio
             this.timeProvider = timeProvider;
             this.updateProvider = updateProvider;
             weakReference = new WeakReference<TimerManager>(this);
-            pooling = new TemporioPooling();
+            Pooling = new TemporioPooling();
         }
 
         /// <summary>
@@ -52,20 +58,31 @@ namespace Damdor.Temporio
         /// </summary>
         public void Dispose()
         {
+            if (isDisposed) return;
+            isDisposed = true;
+            ClearTimerBuilders();
             updateProvider.Unregister(PlayerLoopTiming.Update, OnUpdate);
             updateProvider.Unregister(PlayerLoopTiming.FixedUpdate, OnFixedUpdate);
             updateProvider.Unregister(PlayerLoopTiming.LateUpdate, OnLateUpdate);
             
             updateProvider.Dispose();
             timeProvider.Dispose();
-            pooling.Dispose();
+            Pooling.Dispose();
         }
 
         /// <summary>
         /// Creates a new timer using the <see cref="TimerBuilder"/> class.
         /// </summary>
         /// <returns>A <see cref="TimerBuilder"/> instance to configure and run the timer.</returns>
-        public TimerBuilder Schedule() => default;
+        public TimerBuilder Schedule()
+        {
+            if (isDisposed) throw new ObjectDisposedException(nameof(TimerManager));
+            var internalId = checked(++lastTimerBuilderInternalId);
+            CreateNewInternalTimerBuilder(internalId);
+            var builder = new TimerBuilder();
+            builder.Setup(weakReference, internalId);
+            return builder;
+        }
 
         /// <summary>
         /// Sets a custom error handler to manage exceptions that occur during timer operations.
@@ -98,11 +115,30 @@ namespace Damdor.Temporio
         internal int GetInvocationCount(long internalTimerId) => 0;
         
         internal InternalTimer GetInternalTimer(long internalId) => null;
-        internal InternalTimer CreateNewInternalTimer(long internalId) => null;
-        internal InternalTimerBuilder GetInternalTimerBuilder(long internalId) => null;
-        internal InternalTimerBuilder CreateNewInternalTimerBuilder(long internalId) => null;
+        internal InternalTimerBuilder GetInternalTimerBuilder(long internalId) 
+            => timerBuilders.GetValueOrDefault(internalId);
+        internal Timer RunTimer(InternalTimerBuilder builder)
+        {
+            if (isDisposed) throw new ObjectDisposedException(nameof(TimerManager));
+            timerBuilders.Remove(builder.InternalId);
+            return new Timer();
+        }
+
+        private void CreateNewInternalTimerBuilder(long internalId)
+        {
+            var builder = Pooling.PopInternalTimerBuilder();
+            builder.Reset();
+            builder.InternalId = internalId;
+            timerBuilders.Add(internalId, builder);
+        }
         
-        private void OnUpdate() { }
+        private void OnUpdate() => ClearTimerBuilders();
+
+        private void ClearTimerBuilders()
+        {
+            foreach (var builder in timerBuilders.Values) Pooling.ReleaseInternalTimerBuilder(builder);
+            timerBuilders.Clear();
+        }
         private void OnFixedUpdate() { }
         private void OnLateUpdate() { }
     }

@@ -13,6 +13,7 @@ namespace Damdor.Temporio
         public List<TimerInvocation> Invocations { get; } = new();
         public List<TimerGuard> Guards { get; } = new();
         public MissingPeriodBehaviour MissingPeriodBehaviour { get; set; }
+        public string DebugName { get; set; }
         
         internal void Reset()
         {
