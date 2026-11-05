@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Damdor.Temporio
 {
@@ -14,13 +15,30 @@ namespace Damdor.Temporio
             new(100, data => data.Reset(), () => new GameObjectTimerGuard());
         private readonly ObjectPool<ConditionTimerGuard> conditionTimerGuardPool =
             new(100, data => data.Reset(), () => new ConditionTimerGuard());
+        private readonly Dictionary<Type, ObjectPool<TimerInvocation>>
+            timerInvocationWithParameterPool = new();
 
         internal InternalTimer PopInternalTimer() => internalTimerPool.Pop();
         internal void ReleaseInternalTimer(InternalTimer data) => internalTimerPool.Release(data);
 
         internal TimerInvocationWithoutParameter PopTimerInvocationWithoutParameter() => timerInvocationWithoutParameterPool.Pop();
-        // ReSharper disable once MemberCanBeMadeStatic.Global
-        internal TimerInvocationWithParameter<T> PopTimerInvocationWithParameter<T>() => new();
+        internal TimerInvocationWithParameter<T> PopTimerInvocationWithParameter<T>() => GetTimerInvocationWithParameterPool<T>().Pop() as TimerInvocationWithParameter<T>;
+        internal void ReleaseTimerInvocationWithoutParameter(TimerInvocationWithoutParameter invocation) => timerInvocationWithoutParameterPool.Release(invocation);
+        internal void ReleaseTimerInvocationWithParameter<T>(TimerInvocationWithParameter<T> invocation) => GetTimerInvocationWithParameterPool<T>().Release(invocation);
+        
+        private ObjectPool<TimerInvocation> GetTimerInvocationWithParameterPool<T>()
+        {
+            var type = typeof(T);
+            if (timerInvocationWithParameterPool.TryGetValue(type, out var pool)) return pool;
+            pool = new ObjectPool<TimerInvocation>(
+                50,
+                data => data.Reset(),
+                () => new TimerInvocationWithParameter<T>()
+            );
+            timerInvocationWithParameterPool[type] = pool;
+            return pool;
+        }
+        
         internal void ReleaseTimerInvocation(TimerInvocation invocation)
         {
             if (invocation is TimerInvocationWithoutParameter withoutParameter)

@@ -5,7 +5,6 @@ using UnityEngine;
 namespace Damdor.Temporio
 {
     internal sealed class ObjectPool<T> : IDisposable
-        where T : class
     {
         private readonly Stack<T> items = new();
         private readonly Action<T> reset;

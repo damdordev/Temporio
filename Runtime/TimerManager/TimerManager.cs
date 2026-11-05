@@ -283,7 +283,7 @@ namespace Damdor.Temporio
         
         private void ReleaseInternalTimer(InternalTimer internalTimer)
         {
-            foreach (var invocation in internalTimer.Invocations) Pooling.ReleaseTimerInvocation(invocation);
+            foreach (var invocation in internalTimer.Invocations) invocation.ReturnToPool(Pooling);
             foreach (var guard in internalTimer.Guards) Pooling.ReleaseGuard(guard);
 
             Pooling.ReleaseInternalTimer(internalTimer);

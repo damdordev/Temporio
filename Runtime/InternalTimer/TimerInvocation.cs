@@ -5,6 +5,9 @@ namespace Damdor.Temporio
     internal abstract class TimerInvocation
     {
         public abstract void Fire(TimerInvocationContext context);
+
+        internal abstract void ReturnToPool(TemporioPooling pooling);
+        internal abstract void Reset();
     }
     
     internal class TimerInvocationWithoutParameter : TimerInvocation
@@ -17,12 +20,18 @@ namespace Damdor.Temporio
             Action?.Invoke();
             ActionWithContext?.Invoke(context);
         }
-        
-        internal void Reset()
+
+        internal override void ReturnToPool(TemporioPooling pooling)
+        {
+            pooling.ReleaseTimerInvocationWithoutParameter(this);
+        }
+
+        internal override void Reset()
         {
             Action = null;
             ActionWithContext = null;
         }
+        
     }
 
     internal abstract class TimerInvocationWithParameter : TimerInvocation
@@ -43,9 +52,14 @@ namespace Damdor.Temporio
             Action?.Invoke(Parameter);
             ActionWithContext?.Invoke(context, Parameter);
         }
-        
+
+        internal override void ReturnToPool(TemporioPooling pooling)
+        {
+            pooling.ReleaseTimerInvocationWithParameter<T>(this);
+        }
+
         // ReSharper disable once UnusedMember.Global
-        internal void Reset()
+        internal override void Reset()
         {
             Action = null;
             ActionWithContext = null;
