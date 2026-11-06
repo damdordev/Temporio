@@ -25,6 +25,17 @@ namespace Damdor.Temporio
         public bool IsAlive => GetInternalTimer() != null;
 
         /// <summary>
+        /// Gets the timer group associated with this timer.
+        /// </summary>
+        /// <value>
+        /// A handle representing the group that contains the timer, or the default timer group handle if no group information is available.
+        /// </value>
+        /// <remarks>
+        /// This property provides access to the group assigned to the timer by the timer manager. If the associated timer manager can no longer be reached or the timer is no longer available, the returned handle may represent a default or inactive group.
+        /// </remarks>
+        public TimerGroup TimerGroup => default;
+
+        /// <summary>
         /// Gets a value indicating whether the associated timer is periodic.
         /// </summary>
         /// <value>

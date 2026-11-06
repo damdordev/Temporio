@@ -116,6 +116,8 @@ namespace Damdor.Temporio
         /// </summary>
         public bool LogErrors { get; set; } = true;
 
+        public TimerGroup CreateGroup(string name) => default;
+
         /// <summary>
         /// Indicates whether a timer is canceled when an exception occurs during its invocation.
         /// Affects only timers that are periodic.
@@ -294,7 +296,7 @@ namespace Damdor.Temporio
         
         private void ReleaseInternalTimerBuilder(InternalTimerBuilder builder)
         {
-            foreach (var invocation in builder.Invocations) Pooling.ReleaseTimerInvocation(invocation);
+            foreach (var invocation in builder.Invocations) invocation.ReturnToPool(Pooling);
             builder.Invocations.Clear();
             foreach (var guard in builder.Guards) guard.ReturnToPool(Pooling);
             builder.Guards.Clear();

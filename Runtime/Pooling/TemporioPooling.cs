@@ -5,28 +5,38 @@ namespace Damdor.Temporio
 {
     internal class TemporioPooling : IDisposable
     {
+        #region InternalTimer
+
         private readonly ObjectPool<InternalTimer> internalTimerPool =
             new(500, data => data.Reset(), () => new InternalTimer());
+
+        public InternalTimer PopInternalTimer() => internalTimerPool.Pop();
+        public void ReleaseInternalTimer(InternalTimer data) => internalTimerPool.Release(data);
+        
+        #endregion
+
+        #region InternalTimerBuilder
+
+        private readonly ObjectPool<InternalTimerBuilder> internalTimerBuilderPool =
+            new(50, data => data.Reset(), () => new InternalTimerBuilder());
+
+        public InternalTimerBuilder PopInternalTimerBuilder() => internalTimerBuilderPool.Pop();
+        public void ReleaseInternalTimerBuilder(InternalTimerBuilder timerBuilder) => internalTimerBuilderPool.Release(timerBuilder);
+        
+        #endregion
+        
+        #region Invocation
+
         private readonly ObjectPool<TimerInvocationWithoutParameter> timerInvocationWithoutParameterPool =
             new(500, data => data.Reset(), () => new TimerInvocationWithoutParameter());
-        private readonly ObjectPool<InternalTimerBuilder> timerBuilderPool =
-            new(50, data => data.Reset(), () => new InternalTimerBuilder());
-        private readonly ObjectPool<GameObjectTimerGuard> gameObjectTimerGuardPool =
-            new(100, data => data.Reset(), () => new GameObjectTimerGuard());
-        private readonly ObjectPool<ConditionTimerGuard> conditionTimerGuardPool =
-            new(100, data => data.Reset(), () => new ConditionTimerGuard());
+
         private readonly Dictionary<Type, ObjectPool<TimerInvocation>>
             timerInvocationWithParameterPools = new();
-        private readonly Dictionary<Type, ObjectPool<TimerGuard>>
-            parametrizeConditionTimerGuardPools = new();
-
-        internal InternalTimer PopInternalTimer() => internalTimerPool.Pop();
-        internal void ReleaseInternalTimer(InternalTimer data) => internalTimerPool.Release(data);
-
-        internal TimerInvocationWithoutParameter PopTimerInvocationWithoutParameter() => timerInvocationWithoutParameterPool.Pop();
-        internal TimerInvocationWithParameter<T> PopTimerInvocationWithParameter<T>() => GetTimerInvocationWithParameterPool<T>().Pop() as TimerInvocationWithParameter<T>;
-        internal void ReleaseTimerInvocationWithoutParameter(TimerInvocationWithoutParameter invocation) => timerInvocationWithoutParameterPool.Release(invocation);
-        internal void ReleaseTimerInvocationWithParameter<T>(TimerInvocationWithParameter<T> invocation) => GetTimerInvocationWithParameterPool<T>().Release(invocation);
+        
+        public TimerInvocationWithoutParameter PopTimerInvocationWithoutParameter() => timerInvocationWithoutParameterPool.Pop();
+        public TimerInvocationWithParameter<T> PopTimerInvocationWithParameter<T>() => GetTimerInvocationWithParameterPool<T>().Pop() as TimerInvocationWithParameter<T>;
+        public void ReleaseTimerInvocationWithoutParameter(TimerInvocationWithoutParameter invocation) => timerInvocationWithoutParameterPool.Release(invocation);
+        public void ReleaseTimerInvocationWithParameter<T>(TimerInvocationWithParameter<T> invocation) => GetTimerInvocationWithParameterPool<T>().Release(invocation);
         
         private ObjectPool<TimerInvocation> GetTimerInvocationWithParameterPool<T>()
         {
@@ -41,25 +51,25 @@ namespace Damdor.Temporio
             return pool;
         }
         
-        internal void ReleaseTimerInvocation(TimerInvocation invocation)
-        {
-            if (invocation is TimerInvocationWithoutParameter withoutParameter)
-            {
-                timerInvocationWithoutParameterPool.Release(withoutParameter);
-            }
-        }
-        
-        internal InternalTimerBuilder PopInternalTimerBuilder() => timerBuilderPool.Pop();
-        internal void ReleaseInternalTimerBuilder(InternalTimerBuilder timerBuilder) => timerBuilderPool.Release(timerBuilder);
+        #endregion
 
-        internal GameObjectTimerGuard PopGameObjectTimerGuard() => gameObjectTimerGuardPool.Pop();
-        internal void ReleaseGameObjectTimerGuard(GameObjectTimerGuard guard) => gameObjectTimerGuardPool.Release(guard);
-        internal ConditionTimerGuard PopConditionTimerGuard() => conditionTimerGuardPool.Pop();
-        internal void ReleaseConditionTimerGuard(ConditionTimerGuard guard) => conditionTimerGuardPool.Release(guard);
+        #region Guard
 
-        internal ParametrizeConditionTimerGuard<T> PopParametrizeConditionTimerGuard<T>() =>
+        private readonly ObjectPool<GameObjectTimerGuard> gameObjectTimerGuardPool =
+            new(100, data => data.Reset(), () => new GameObjectTimerGuard());
+        private readonly ObjectPool<ConditionTimerGuard> conditionTimerGuardPool =
+            new(100, data => data.Reset(), () => new ConditionTimerGuard());
+        private readonly Dictionary<Type, ObjectPool<TimerGuard>>
+            parametrizeConditionTimerGuardPools = new();
+
+        public GameObjectTimerGuard PopGameObjectTimerGuard() => gameObjectTimerGuardPool.Pop();
+        public void ReleaseGameObjectTimerGuard(GameObjectTimerGuard guard) => gameObjectTimerGuardPool.Release(guard);
+        public ConditionTimerGuard PopConditionTimerGuard() => conditionTimerGuardPool.Pop();
+        public void ReleaseConditionTimerGuard(ConditionTimerGuard guard) => conditionTimerGuardPool.Release(guard);
+
+        public ParametrizeConditionTimerGuard<T> PopParametrizeConditionTimerGuard<T>() =>
             GetParametrizeConditionTimerGuardPool<T>().Pop() as ParametrizeConditionTimerGuard<T>;
-        internal void ReleaseParametrizeConditionTimerGuard<T>(ParametrizeConditionTimerGuard<T> guard)
+        public void ReleaseParametrizeConditionTimerGuard<T>(ParametrizeConditionTimerGuard<T> guard)
             => GetParametrizeConditionTimerGuardPool<T>().Release(guard);
         
         private ObjectPool<TimerGuard> GetParametrizeConditionTimerGuardPool<T>()
@@ -75,13 +85,25 @@ namespace Damdor.Temporio
             return pool;
         }
         
+        #endregion
+        
+        #region InternalTimerGroup
+
+        private readonly ObjectPool<InternalTimerGroup> internalTimerGroupPool =
+            new(500, data => data.Reset(), () => new InternalTimerGroup());
+
+        public InternalTimerGroup PopInternalTimerGroup() => internalTimerGroupPool.Pop();
+        public void ReleaseInternalTimerGroup(InternalTimerGroup data) => internalTimerGroupPool.Release(data);
+        
+        #endregion
+        
         public void Dispose()
         {
             internalTimerPool.Dispose();
             timerInvocationWithoutParameterPool.Dispose();
             gameObjectTimerGuardPool.Dispose();
             conditionTimerGuardPool.Dispose();
-            timerBuilderPool.Dispose();
+            internalTimerBuilderPool.Dispose();
         }
     }
 }

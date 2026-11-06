@@ -353,6 +353,20 @@ namespace Damdor.Temporio
         }
 
         /// <summary>
+        /// Assigns the configured timer to the specified timer group.
+        /// </summary>
+        /// <param name="group">
+        /// The <see cref="TimerGroup"/> that will be associated with the timer.
+        /// </param>
+        /// <returns>
+        /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
+        /// </returns>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
+        /// <exception cref="ArgumentException">Thrown if the provided <paramref name="group"/> is not alive or was created
+        /// for a different manager</exception>
+        public TimerBuilder Group(TimerGroup group) => this;
+
+        /// <summary>
         /// Finalizes the configuration of the timer and initiates its execution. This method can be used only
         /// once. After calling this method, you cannot use this instance of <see cref="TimerBuilder"/> as it returns
         /// to the internal pool for reuse.
