@@ -219,7 +219,7 @@ namespace Damdor.Temporio
         /// Cancelling the wait does not cancel the timer. Paused timers remain pending until resumed or cancelled.
         /// A wait started inside an action observes the following invocation, not the one already in progress.
         /// </remarks>
-        public async UniTask<bool> WaitForInvocation(CancellationToken cancellationToken)
+        public async UniTask<bool> WaitForInvocation(CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested) return false;
             var internalTimer = GetInternalTimer();

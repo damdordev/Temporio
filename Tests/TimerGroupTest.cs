@@ -308,6 +308,15 @@ namespace Damdor.Temporio.Tests
             Assert.DoesNotThrow(group.Resume);
         }
 
+        [Test]
+        public void CheckIfGroupBecomesDeadAfterManagerIsDisposed()
+        {
+            var group = timerManager.CreateGroup("new");
+            Assert.That(group.IsAlive, Is.True);
+            timerManager.Dispose();
+            Assert.That(group.IsAlive, Is.False);
+        }
+        
         private void TickAt(DateTime time)
         {
             timeProvider.Now = time;

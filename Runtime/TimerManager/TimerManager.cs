@@ -83,6 +83,7 @@ namespace Damdor.Temporio
             {
                 if (timer != executingTimer) ReleaseInternalTimer(timer);
             }
+            timerGroups.Clear();
 
             updateProvider.Unregister(PlayerLoopTiming.Update, OnUpdate);
             updateProvider.Unregister(PlayerLoopTiming.FixedUpdate, OnFixedUpdate);
