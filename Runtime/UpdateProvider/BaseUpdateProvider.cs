@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine.Pool;
 
@@ -12,14 +13,18 @@ namespace Damdor.Temporio
     public class BaseUpdateProvider : IUpdateProvider
     {
         private readonly Dictionary<PlayerLoopTiming, List<UpdateReceiver>> receivers = new();
+        // ReSharper disable once MemberCanBePrivate.Global
+        protected bool isDisposed { get; private set; }
         
         public void Register(PlayerLoopTiming timing, UpdateReceiver receiver)
         {
+            if (isDisposed) throw new ObjectDisposedException(nameof(TimerManager));
             GetReceivers(timing).Add(receiver);
         }
 
         public void Unregister(PlayerLoopTiming timing, UpdateReceiver receiver)
         {
+            if (isDisposed) throw new ObjectDisposedException(nameof(TimerManager));
             GetReceivers(timing).Remove(receiver);
         }
 
@@ -37,6 +42,7 @@ namespace Damdor.Temporio
         /// <param name="timing">The player loop timing whose registered receivers should be invoked.</param>
         protected void Run(PlayerLoopTiming timing)
         {
+            if (isDisposed) throw new ObjectDisposedException(nameof(TimerManager));
             var list = ListPool<UpdateReceiver>.Get();
             list.AddRange(GetReceivers(timing));
             foreach (var receiver in list)
@@ -48,6 +54,8 @@ namespace Damdor.Temporio
 
         public virtual void Dispose()
         {
+            if (isDisposed) throw new ObjectDisposedException(GetType().Name);
+            isDisposed = true;
             receivers.Clear();
         }
     }
