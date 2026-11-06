@@ -391,6 +391,7 @@ namespace Damdor.Temporio
         public TimerBuilder Group(TimerGroup group)
         {
             var internalTimerBuilder = GetInternalTimerBuilderOrThrow();
+            if (group.timerManager == null) throw new ArgumentException("The provided group was created for a different manager");
             group.timerManager.TryGetTarget(out var groupManager);
             timerManager.TryGetTarget(out var myManager);
             if(!group.IsAlive) throw new ArgumentException("The provided group is not alive");
