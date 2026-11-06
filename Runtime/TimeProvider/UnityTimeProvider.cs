@@ -16,7 +16,7 @@ namespace Damdor.Temporio
         public virtual DateTime Now => startDateTime + TimeSpan.FromSeconds(GetUnityTime() - startUnityTime);
 
         private readonly DateTime startDateTime;
-        private readonly float startUnityTime;
+        private readonly double startUnityTime;
         private readonly bool useScaledTime;
 
         // ReSharper disable once MemberCanBeProtected.Global
@@ -27,6 +27,6 @@ namespace Damdor.Temporio
             startUnityTime = GetUnityTime();
         }
         
-        private float GetUnityTime() => useScaledTime ? Time.time : Time.realtimeSinceStartup;
+        private double GetUnityTime() => useScaledTime ? Time.timeAsDouble : Time.realtimeSinceStartupAsDouble;
     }
 }
