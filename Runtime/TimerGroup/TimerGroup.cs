@@ -50,8 +50,13 @@ namespace Damdor.Temporio
         /// <summary>
         /// Pauses all active timers associated with this timer group.
         /// </summary>
+        /// <remarks>
+        /// Timers added to this group also start paused until the group resumes.
+        /// If called from an action, the remaining actions in that invocation still execute.
+        /// </remarks>
         public void Pause()
         {
+            if (timerManager != null && timerManager.TryGetTarget(out var manager)) manager.SetGroupPaused(id, true);
         }
 
         /// <summary>
@@ -62,6 +67,7 @@ namespace Damdor.Temporio
         /// </remarks>
         public void Resume()
         {
+            if (timerManager != null && timerManager.TryGetTarget(out var manager)) manager.SetGroupPaused(id, false);
         }
 
         /// <summary>

@@ -170,6 +170,42 @@ namespace Damdor.Temporio
             return true;
         }
 
+        internal void SetTimerPaused(long id, bool paused)
+        {
+            if (timers.TryGetValue(id, out var timer)) SetTimerPaused(timer, paused, false, Now);
+        }
+
+        internal void SetGroupPaused(long id, bool paused)
+        {
+            if (isDisposed || !timerGroups.TryGetValue(id, out var group) || group.IsPaused == paused) return;
+            group.IsPaused = paused;
+            var now = Now;
+            GetTimersForGroup(id, tmpTimerList);
+            foreach (var timer in tmpTimerList)
+                SetTimerPaused(timers[timer.id], paused, true, now);
+        }
+
+        private void SetTimerPaused(InternalTimer timer, bool paused, bool byGroup, DateTime now)
+        {
+            var wasPaused = timer.IsPaused;
+            if (byGroup) timer.IsPausedByGroup = paused;
+            else timer.IsPausedSelf = paused;
+
+            if (!wasPaused && timer.IsPaused) timer.PausedAt = now;
+            if (!wasPaused || timer.IsPaused) return;
+
+            var pauseDuration = now - timer.PausedAt;
+            // A timer whose adjusted deadline cannot be represented cannot be scheduled again.
+            if (pauseDuration.Ticks > DateTime.MaxValue.Ticks - timer.NextInvocationTime.Ticks ||
+                pauseDuration.Ticks < -timer.NextInvocationTime.Ticks)
+            {
+                CancelTimer(timer.Id);
+                return;
+            }
+            timer.NextInvocationTime += pauseDuration;
+            timer.PausedAt = default;
+        }
+
         internal void DisposeGroup(long id)
         {
             CancelGroup(id);
@@ -221,6 +257,11 @@ namespace Damdor.Temporio
             timer.MissingPeriodBehaviour = builder.MissingPeriodBehaviour;
             timer.Timing = builder.Timing;
             timer.GroupId = builder.TimerGroup;
+            if (timerGroups.TryGetValue(timer.GroupId, out var group) && group.IsPaused)
+            {
+                timer.IsPausedByGroup = true;
+                timer.PausedAt = Now;
+            }
             builder.Invocations.Clear();
             builder.Guards.Clear();
 
@@ -288,7 +329,7 @@ namespace Damdor.Temporio
                 return;
             }
 
-            while (timers.ContainsKey(timer.Id) && timer.NextInvocationTime <= now)
+            while (timers.ContainsKey(timer.Id) && !timer.IsPaused && timer.NextInvocationTime <= now)
             {
                 var context = new TimerInvocationContext(timer.InvocationCount, now, timer.NextInvocationTime);
                 var cancelOnException = false;

@@ -21,6 +21,7 @@ Temporio is a timer scheduling library for Unity, with one-time and repeating ti
   - [Actions with context](#actions-with-context)
   - [Actions with parameter](#actions-with-parameter)
   - [Timer groups](#timer-groups)
+  - [Pausing and resuming timers](#pausing-and-resuming-timers)
   - [Guards](#guards)
   - [MissingPeriodBehaviour](#missingperiodbehaviour)
   - [ITimeProvider](#itimeprovider)
@@ -306,6 +307,44 @@ timerGroup.Dispose();
 ```
 This operation cancels all tasks from the group and removes internal 
 data for group.
+
+### Pausing and resuming timers
+
+Call `Pause()` to suspend a timer and `Resume()` to continue it with the same remaining delay:
+
+```csharp
+var timer = timerManager.Schedule()
+    .After(TimeSpan.FromSeconds(10))
+    .Every(TimeSpan.FromSeconds(2))
+    .Action(() => Debug.Log("Tick"))
+    .Run();
+
+timer.Pause();
+// Later, resume from the point at which the timer was paused.
+timer.Resume();
+```
+
+Pausing preserves `IsAlive` and `InvocationCount`. `TimeToNextInvocation` freezes while paused, and `NextInvocationTime` shifts by the total pause duration when execution resumes. For example, pausing with seven seconds remaining and resuming thirty seconds later still leaves seven seconds until the next invocation. Repeating timers keep their interval and invocation limit; paused time does not create missed periods for `MissingPeriodBehaviour`.
+
+Use the same methods on a `TimerGroup` to suspend its timers together:
+
+```csharp
+var group = timerManager.CreateGroup("gameplay");
+var groupedTimer = timerManager.Schedule()
+    .Group(group)
+    .Every(TimeSpan.FromSeconds(1))
+    .Action(() => Debug.Log("Gameplay tick"))
+    .Run();
+
+group.Pause();
+groupedTimer.Pause();  // Also pause this timer individually.
+group.Resume();       // This timer remains paused individually.
+groupedTimer.Resume();
+```
+
+`IsPausedSelf` reports the timer's individual pause state; `IsPaused` is true if either the timer or its group is paused. Both pause states must be cleared before execution continues. Overlapping pauses count once toward the total pause duration. Timers added to a paused group start paused, preserving their initial delay until the group resumes.
+
+Repeated calls to `Pause()` or `Resume()` for the same pause state have no additional effect. Calls on default, completed, cancelled, or disposed handles do nothing. When called from an action, pausing allows the remaining actions in the current invocation to finish and stops further invocations, including `RunAll` catch-up. Cancellation guards still run during the selected update phase while paused, and `Cancel()` and group disposal still cancel paused timers.
 
 ### Guards
 

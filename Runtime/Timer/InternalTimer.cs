@@ -19,6 +19,10 @@ namespace Damdor.Temporio
         public int InvocationCount { get; set; }
         public string DebugName { get; set; }
         public long GroupId { get; set; }
+        public bool IsPausedSelf { get; set; }
+        public bool IsPausedByGroup { get; set; }
+        public bool IsPaused => IsPausedSelf || IsPausedByGroup;
+        public DateTime PausedAt { get; set; }
         
         internal void Reset()
         {
@@ -34,6 +38,9 @@ namespace Damdor.Temporio
             InvocationLimit = 0;
             InvocationCount = 0;
             DebugName = null;
+            IsPausedSelf = false;
+            IsPausedByGroup = false;
+            PausedAt = default;
         }
     }
 }

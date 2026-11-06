@@ -68,7 +68,8 @@ namespace Damdor.Temporio
         /// The next scheduled invocation time for the timer, or the current date and time if the associated timer manager is unavailable.
         /// </value>
         /// <remarks>
-        /// This value reflects the timer state reported by the associated timer manager. If the manager can no longer be reached, the property returns the current date and time as a fallback value.
+        /// While paused, this value remains unchanged until execution resumes, when it shifts by the total pause duration.
+        /// If the manager can no longer be reached, the property returns the current date and time as a fallback value.
         /// </remarks>
         public DateTime NextInvocationTime => GetInternalTimer()?.NextInvocationTime ?? DateTime.Now;
 
@@ -78,6 +79,7 @@ namespace Damdor.Temporio
         /// <value>
         /// The time interval until the next invocation, or <see cref="TimeSpan.Zero"/> if the associated timer manager is unavailable.
         /// </value>
+        /// <remarks>The remaining delay is frozen while the timer is paused directly or by its group.</remarks>
         public TimeSpan TimeToNextInvocation
         {
             get
@@ -85,7 +87,7 @@ namespace Damdor.Temporio
                 var internalTimer = GetInternalTimer();
                 if(internalTimer == null) return TimeSpan.Zero;
                 timerManager.TryGetTarget(out var manager);
-                var time = internalTimer.NextInvocationTime - manager!.Now;
+                var time = internalTimer.NextInvocationTime - (internalTimer.IsPaused ? internalTimer.PausedAt : manager!.Now);
                 return time < TimeSpan.Zero ? TimeSpan.Zero : time;
             }
         }
@@ -122,7 +124,7 @@ namespace Damdor.Temporio
         /// <remarks>
         /// This property represents only the timer's individual pause state and does not indicate whether execution is suspended because of its timer group or manager state. If the associated timer cannot be found, this property returns false.
         /// </remarks>
-        public bool IsPausedSelf => false;
+        public bool IsPausedSelf => GetInternalTimer()?.IsPausedSelf ?? false;
 
         /// <summary>
         /// Gets a value indicating whether the associated timer is currently paused. Timer can be paused in two ways:
@@ -134,7 +136,7 @@ namespace Damdor.Temporio
         /// <remarks>
         /// This property returns false if the associated timer manager can no longer be reached, if the timer is no longer active, or if the timer is not currently paused.
         /// </remarks>
-        public bool IsPaused => false;
+        public bool IsPaused => GetInternalTimer()?.IsPaused ?? false;
 
         private readonly WeakReference<TimerManager> timerManager;
         internal readonly long id;
@@ -159,18 +161,22 @@ namespace Damdor.Temporio
         /// Pauses the timer associated with this handle, preventing it from invoking until it is resumed.
         /// Time of the next invocation will be modified to reflect the pause duration.
         /// Mind that the timer can be paused in two ways: by calling Pause() on it or on its group. 
-        /// If the timer is already paused, cancelled, completed, or unavailable, this call has no effect.
+        /// If the timer is already paused directly, cancelled, completed, or unavailable, this call has no effect.
+        /// If called from an action, the remaining actions in that invocation still execute.
         /// </summary>
         public void Pause()
         {
+            if (timerManager != null && timerManager.TryGetTarget(out var manager)) manager.SetTimerPaused(id, true);
         }
 
         /// <summary>
         /// Resumes the timer associated with this handle if it is currently paused.
         /// If the timer is not alive, is not paused, or its manager is unavailable, the call has no effect.
         /// </summary>
+        /// <remarks>This clears only the timer's individual pause state. A paused group still prevents execution.</remarks>
         public void Resume()
         {
+            if (timerManager != null && timerManager.TryGetTarget(out var manager)) manager.SetTimerPaused(id, false);
         }
         
         /// <summary>

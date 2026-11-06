@@ -729,6 +729,179 @@ namespace Damdor.Temporio.Tests
             Assert.That(calls, Is.EqualTo(1));
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Pause_FreezesRemainingTimeAndResumeShiftsDeadline(bool repeating)
+        {
+            var start = timerManager.Now;
+            var calls = 0;
+            var builder = Schedule().After(TimeSpan.FromSeconds(10)).Action(() => calls++);
+            if (repeating) builder.Every(TimeSpan.FromSeconds(2)).InvocationLimit(2);
+            var timer = builder.Run();
+            Assert.That(timer.IsPaused, Is.False);
+            timer.Resume();
+            TickAt(start.AddSeconds(3));
+            timer.Pause();
+
+            Assert.That(timer.IsAlive, Is.True);
+            Assert.That(timer.IsPausedSelf, Is.True);
+            Assert.That(timer.IsPaused, Is.True);
+            TickAt(start.AddSeconds(30));
+            timer.Pause();
+            Assert.That(calls, Is.Zero);
+            Assert.That(timer.InvocationCount, Is.Zero);
+            Assert.That(timer.TimeToNextInvocation, Is.EqualTo(TimeSpan.FromSeconds(7)));
+            Assert.That(timer.NextInvocationTime, Is.EqualTo(start.AddSeconds(10)));
+
+            timer.Resume();
+            timer.Resume();
+            Assert.That(timer.IsPausedSelf, Is.False);
+            Assert.That(timer.IsPaused, Is.False);
+            AssertInvocationTimes(timer, start.AddSeconds(37));
+            TickAt(start.AddSeconds(36));
+            Assert.That(calls, Is.Zero);
+            TickAt(start.AddSeconds(37));
+            Assert.That(calls, Is.EqualTo(1));
+            if (repeating)
+            {
+                AssertInvocationTimes(timer, start.AddSeconds(39));
+                TickAt(start.AddSeconds(39));
+                Assert.That(calls, Is.EqualTo(2));
+            }
+            Assert.That(timer.IsAlive, Is.False);
+        }
+
+        [Test]
+        public void Pause_RepeatedCyclesPreserveRemainingTime()
+        {
+            var start = timerManager.Now;
+            var timer = Schedule().After(TimeSpan.FromSeconds(10)).Run();
+            TickAt(start.AddSeconds(2));
+            timer.Pause();
+            TickAt(start.AddSeconds(5));
+            timer.Resume();
+            AssertInvocationTimes(timer, start.AddSeconds(13));
+            TickAt(start.AddSeconds(6));
+            timer.Pause();
+            TickAt(start.AddSeconds(10));
+            timer.Resume();
+            AssertInvocationTimes(timer, start.AddSeconds(17));
+        }
+
+        [Test]
+        public void Pause_BetweenRepetitionsDoesNotConsumeInvocationLimit([Values] MissingPeriodBehaviour behaviour)
+        {
+            var start = timerManager.Now;
+            var calls = 0;
+            var timer = Schedule().Every(TimeSpan.FromSeconds(10)).InvocationLimit(3)
+                .MissingPeriodBehaviour(behaviour).Action(() => calls++).Run();
+            TickAt(start);
+            TickAt(start.AddSeconds(4));
+            timer.Pause();
+            TickAt(start.AddSeconds(104));
+            Assert.That(calls, Is.EqualTo(1));
+            Assert.That(timer.InvocationCount, Is.EqualTo(1));
+            timer.Resume();
+            AssertInvocationTimes(timer, start.AddSeconds(110));
+            TickAt(start.AddSeconds(110));
+            Assert.That(calls, Is.EqualTo(2));
+            TickAt(start.AddSeconds(120));
+            Assert.That(calls, Is.EqualTo(3));
+            Assert.That(timer.IsAlive, Is.False);
+        }
+
+        [Test]
+        public void Pause_InsideActionFinishesInvocationAndStopsCatchUp([Values] bool repeating,
+            [Values] MissingPeriodBehaviour behaviour)
+        {
+            var start = timerManager.Now;
+            var calls = 0;
+            Timer timer = default;
+            var builder = Schedule().Action(() => timer.Pause()).Action(() => calls++);
+            if (repeating) builder.Every(TimeSpan.FromSeconds(2)).MissingPeriodBehaviour(behaviour);
+            timer = builder.Run();
+
+            TickAt(start.AddSeconds(7));
+            Assert.That(calls, Is.EqualTo(1));
+            Assert.That(timer.IsAlive, Is.EqualTo(repeating));
+            Assert.That(timer.IsPaused, Is.EqualTo(repeating));
+            TickAt(start.AddSeconds(17));
+            Assert.That(calls, Is.EqualTo(1));
+            timer.Resume();
+            if (!repeating) return;
+            var expected = start.AddSeconds(behaviour == MissingPeriodBehaviour.RunAll ? 12 : 18);
+            Assert.That(timer.NextInvocationTime, Is.EqualTo(expected));
+            TickAt(start.AddSeconds(18));
+            Assert.That(calls, Is.EqualTo(2));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Pause_CancellationGuardsStillRun(bool byGroup)
+        {
+            using var cancellation = new CancellationTokenSource();
+            var group = timerManager.CreateGroup("paused");
+            var calls = 0;
+            var timer = Schedule().Group(group).CancellationToken(cancellation.Token).Action(() => calls++).Run();
+            if (byGroup) group.Pause();
+            else timer.Pause();
+            cancellation.Cancel();
+            TickAt(timerManager.Now);
+            Assert.That(timer.IsAlive, Is.False);
+            Assert.That(timer.IsPaused, Is.False);
+            Assert.That(calls, Is.Zero);
+        }
+
+        [Test]
+        public void Pause_CancelledTimerDoesNotAffectReusedTimer()
+        {
+            var timer = Schedule().Run();
+            var original = GetInternalTimer(timer);
+            timer.Pause();
+            Assert.That(timer.Cancel(), Is.True);
+            var replacement = Schedule().Run();
+            Assert.That(GetInternalTimer(replacement), Is.SameAs(original));
+            timer.Pause();
+            timer.Resume();
+            Assert.That(timer.IsPaused, Is.False);
+            Assert.That(timer.IsPausedSelf, Is.False);
+            Assert.That(replacement.IsPaused, Is.False);
+            TickAt(timerManager.Now);
+            Assert.That(replacement.IsAlive, Is.False);
+        }
+
+        [Test]
+        public void PauseResume_DefaultCompletedAndDisposedHandlesHaveNoEffect()
+        {
+            Timer empty = default;
+            empty.Pause();
+            empty.Resume();
+            Assert.That(empty.IsPaused, Is.False);
+            Assert.That(empty.IsPausedSelf, Is.False);
+            var completed = Schedule().Run();
+            TickAt(timerManager.Now);
+            completed.Pause();
+            completed.Resume();
+            Assert.That(completed.IsPaused, Is.False);
+            var disposed = Schedule().Run();
+            disposed.Pause();
+            timerManager.Dispose();
+            disposed.Pause();
+            disposed.Resume();
+            Assert.That(disposed.IsPaused, Is.False);
+            Assert.That(disposed.IsPausedSelf, Is.False);
+        }
+
+        [Test]
+        public void Resume_UnrepresentableDeadlineCancelsTimer()
+        {
+            var timer = Schedule().When(DateTime.MaxValue).Run();
+            timer.Pause();
+            timeProvider.Now = timeProvider.Now.AddSeconds(1);
+            Assert.DoesNotThrow(() => timer.Resume());
+            Assert.That(timer.IsAlive, Is.False);
+        }
+
         private TimerBuilder Schedule() => timerManager.Schedule().Timing(timing);
 
         private InternalTimer GetInternalTimer(Timer timer)
