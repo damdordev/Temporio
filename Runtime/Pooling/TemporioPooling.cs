@@ -109,6 +109,11 @@ namespace Damdor.Temporio
             gameObjectTimerGuardPool.Dispose();
             conditionTimerGuardPool.Dispose();
             internalTimerBuilderPool.Dispose();
+            internalTimerGroupPool.Dispose();
+            foreach (var pool in parametrizeConditionTimerGuardPools.Values) pool.Dispose();
+            parametrizeConditionTimerGuardPools.Clear();
+            foreach (var pool in timerInvocationWithParameterPools.Values) pool.Dispose();
+            timerInvocationWithParameterPools.Clear();
         }
     }
 }
