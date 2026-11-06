@@ -33,7 +33,7 @@ Temporio is a timer scheduling library for Unity, with one-time and repeating ti
 Temporio is currently under development and is available through Unity Package Manager (UPM) at:
 
 ```text
-https://github.com/damdordev/Temporio.git#1.0.0-preview
+https://github.com/damdordev/Temporio.git#v1.0.0
 ```
 
 Requires Unity 2022.3 or later.
