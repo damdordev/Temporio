@@ -121,11 +121,6 @@ namespace Damdor.Temporio.Tests
                 .Timing(timing)
                 .Run();
             
-            var timer3 = timerManager
-                .Schedule()
-                .Timing(timing)
-                .Run();
-            
             Cancel(timerGroup, cancelType);
             
             var timers = new List<Timer>();
@@ -241,7 +236,7 @@ namespace Damdor.Temporio.Tests
             var calls = 0;
             var first = timerManager.Schedule().Timing(timing).Group(group).Every(TimeSpan.FromSeconds(1))
                 .MissingPeriodBehaviour(MissingPeriodBehaviour.RunAll)
-                .Action(() => group.Pause()).Action(() => calls++).Run();
+                .Action(group.Pause).Action(() => calls++).Run();
             var second = timerManager.Schedule().Timing(timing).Group(group).Action(() => calls += 100).Run();
             TickAt(start.AddSeconds(5));
             Assert.That(calls, Is.EqualTo(1));
@@ -283,8 +278,8 @@ namespace Damdor.Temporio.Tests
             Assert.That(timer.IsPaused, Is.False);
             group.Pause();
             timerManager.Dispose();
-            Assert.DoesNotThrow(() => group.Pause());
-            Assert.DoesNotThrow(() => group.Resume());
+            Assert.DoesNotThrow(group.Pause);
+            Assert.DoesNotThrow(group.Resume);
         }
 
         private void TickAt(DateTime time)
@@ -293,7 +288,7 @@ namespace Damdor.Temporio.Tests
             updateProvider.Tick(timing);
         }
 
-        private void Cancel(TimerGroup group, CancelType type)
+        private static void Cancel(TimerGroup group, CancelType type)
         {
             switch (type)
             {

@@ -453,7 +453,7 @@ namespace Damdor.Temporio.Tests
                 case BuilderMethod.CancelOnDestroy: builder.CancelOnDestroy(CreateOwner()); break;
                 case BuilderMethod.CancelIf: builder.CancelIf(() => false); break;
                 case BuilderMethod.CancelIfWithParameter: builder.CancelIf(42, _ => false); break;
-                case BuilderMethod.CancellationToken: builder.CancellationToken(default); break;
+                case BuilderMethod.CancellationToken: builder.CancellationToken(CancellationToken.None); break;
                 case BuilderMethod.DebugName: builder.DebugName("invalid"); break;
                 case BuilderMethod.Run: builder.Run(); break;
                 default: throw new ArgumentOutOfRangeException(nameof(method));

@@ -24,7 +24,7 @@ namespace Damdor.Temporio
 
         internal override void Reset()
         {
-            cancellationToken = default;
+            cancellationToken = CancellationToken.None;
         }
 
         internal override void ReturnToPool(TemporioPooling pooling)

@@ -89,7 +89,7 @@ namespace Damdor.Temporio.Tests
         {
             using var cancellation = new CancellationTokenSource();
             var calls = 0;
-            var timer = Schedule().CancellationToken(useDefaultToken ? default : cancellation.Token)
+            var timer = Schedule().CancellationToken(useDefaultToken ? CancellationToken.None : cancellation.Token)
                 .Action(() => calls++).Run();
 
             TickAt(timeProvider.Now);
@@ -898,7 +898,7 @@ namespace Damdor.Temporio.Tests
             var timer = Schedule().When(DateTime.MaxValue).Run();
             timer.Pause();
             timeProvider.Now = timeProvider.Now.AddSeconds(1);
-            Assert.DoesNotThrow(() => timer.Resume());
+            Assert.DoesNotThrow(timer.Resume);
             Assert.That(timer.IsAlive, Is.False);
         }
 

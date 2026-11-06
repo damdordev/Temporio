@@ -428,10 +428,10 @@ namespace Damdor.Temporio
             ReferenceEquals(timerManager, other.timerManager) && id == other.id;
 
         /// <inheritdoc/>
-        public override readonly bool Equals(object obj) => obj is TimerBuilder other && Equals(other);
+        public readonly override bool Equals(object obj) => obj is TimerBuilder other && Equals(other);
 
         /// <inheritdoc/>
-        public override readonly int GetHashCode() => HashCode.Combine(timerManager, id);
+        public readonly override int GetHashCode() => HashCode.Combine(timerManager, id);
 
         /// <summary>
         /// Determines whether two handles are equal.
