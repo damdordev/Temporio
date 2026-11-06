@@ -23,8 +23,11 @@ namespace Damdor.Temporio
 
         private readonly Dictionary<long, InternalTimerBuilder> timerBuilders = new();
         private readonly Dictionary<long, InternalTimer> timers = new();
-        private long lastTimerBuilderInternalId;
-        private long lastTimerInternalId;
+        private readonly Dictionary<long, InternalTimerGroup> timerGroups = new();
+        private readonly List<Timer> tmpTimerList = new();
+        private long lastTimerBuilderId;
+        private long lastTimerId;
+        private long lastGroupId = 1;
         private bool isDisposed;
         private bool isRunning;
         private bool isUpdating;
@@ -93,7 +96,7 @@ namespace Damdor.Temporio
         public TimerBuilder Schedule()
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(TimerManager));
-            var internalId = checked(++lastTimerBuilderInternalId);
+            var internalId = checked(++lastTimerBuilderId);
             CreateNewInternalTimerBuilder(internalId);
             var builder = new TimerBuilder();
             builder.Setup(weakReference, internalId);
@@ -116,7 +119,16 @@ namespace Damdor.Temporio
         /// </summary>
         public bool LogErrors { get; set; } = true;
 
-        public TimerGroup CreateGroup(string name) => default;
+        public TimerGroup CreateGroup(string name)
+        {
+            var id = checked(++lastGroupId);
+            var internalGroup = Pooling.PopInternalTimerGroup();
+            internalGroup.Reset();
+            internalGroup.Id = id;
+            internalGroup.Name = name;
+            timerGroups.Add(id, internalGroup);
+            return new TimerGroup(weakReference, id);
+        }
 
         /// <summary>
         /// Indicates whether a timer is canceled when an exception occurs during its invocation.
@@ -125,35 +137,65 @@ namespace Damdor.Temporio
         /// </summary>
         public bool CancelTimerOnException { get; set; }
         
-        internal InternalTimer GetInternalTimer(long internalId)
-            => timers.GetValueOrDefault(internalId);
-        internal InternalTimerBuilder GetInternalTimerBuilder(long internalId) 
-            => timerBuilders.GetValueOrDefault(internalId);
+        internal InternalTimer GetInternalTimer(long id)
+            => timers.GetValueOrDefault(id);
+        internal InternalTimerBuilder GetInternalTimerBuilder(long id) 
+            => timerBuilders.GetValueOrDefault(id);
+        internal InternalTimerGroup GetInternalGroupId(long id) 
+            => timerGroups.GetValueOrDefault(id);
+        
         internal Timer RunTimer(InternalTimerBuilder builder)
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(TimerManager));
             if (builder.IsRepeating && builder.RepeatInterval <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(builder.RepeatInterval), "Repeat interval must be positive.");
             timerBuilders.Remove(builder.Id);
-            var internalId = checked(++lastTimerInternalId);
+            var internalId = checked(++lastTimerId);
             CreateNewInternalTimer(internalId, builder);
             ReleaseInternalTimerBuilder(builder);
             return new Timer(weakReference, internalId);
         }
 
-        internal bool CancelTimer(long internalId)
+        internal bool CancelTimer(long id)
         {
-            if (!timers.Remove(internalId, out var timer)) return false;
+            if (!timers.Remove(id, out var timer)) return false;
             if (timer != executingTimer) ReleaseInternalTimer(timer);
             return true;
         }
 
-        private void CreateNewInternalTimerBuilder(long internalId)
+        internal void DisposeGroup(long id)
+        {
+            CancelGroup(id);
+            if(!timerGroups.Remove(id, out var internalTimerGroup)) return;
+            Pooling.ReleaseInternalTimerGroup(internalTimerGroup);
+        }
+        
+        internal int CancelGroup(long id)
+        {
+            GetTimersForGroup(id, tmpTimerList);
+            var count = tmpTimerList.Count;
+            foreach (var timer in tmpTimerList) CancelTimer(timer.id);
+            return count;
+        }
+        
+        internal void GetTimersForGroup(long groupId, List<Timer> timers)
+        {
+            timers.Clear();
+            if (!timerGroups.ContainsKey(groupId)) return;
+            
+            foreach (var internalTimer in this.timers.Values)
+            {
+                if (internalTimer.GroupId != groupId) continue;
+                timers.Add(new Timer(weakReference, internalTimer.Id));
+            }
+        }
+
+        private void CreateNewInternalTimerBuilder(long id)
         {
             var builder = Pooling.PopInternalTimerBuilder();
             builder.Reset();
-            builder.Id = internalId;
-            timerBuilders.Add(internalId, builder);
+            builder.Id = id;
+            timerBuilders.Add(id, builder);
         }
         
         private void CreateNewInternalTimer(long internalId, InternalTimerBuilder builder)
@@ -171,6 +213,7 @@ namespace Damdor.Temporio
             timer.InvocationLimit = builder.InvocationLimit;
             timer.MissingPeriodBehaviour = builder.MissingPeriodBehaviour;
             timer.Timing = builder.Timing;
+            timer.GroupId = builder.TimerGroup;
             builder.Invocations.Clear();
             builder.Guards.Clear();
 

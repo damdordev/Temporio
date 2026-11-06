@@ -11,7 +11,7 @@ namespace Damdor.Temporio
     /// Builder is short-lived and can be used only in the frame in which it was created.
     /// </para>
     /// </summary>
-    public struct TimerBuilder
+    public struct TimerBuilder : IEquatable<TimerBuilder>
     {
         private WeakReference<TimerManager> timerManager;
         internal long id;
@@ -364,7 +364,16 @@ namespace Damdor.Temporio
         /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
         /// <exception cref="ArgumentException">Thrown if the provided <paramref name="group"/> is not alive or was created
         /// for a different manager</exception>
-        public TimerBuilder Group(TimerGroup group) => this;
+        public TimerBuilder Group(TimerGroup group)
+        {
+            var internalTimerBuilder = GetInternalTimerBuilderOrThrow();
+            group.timerManager.TryGetTarget(out var groupManager);
+            timerManager.TryGetTarget(out var myManager);
+            if(!group.IsAlive) throw new ArgumentException("The provided group is not alive");
+            if(groupManager != myManager) throw new ArgumentException("The provided group was created for a different manager");
+            internalTimerBuilder.TimerGroup = group.id;
+            return this;
+        }
 
         /// <summary>
         /// Finalizes the configuration of the timer and initiates its execution. This method can be used only
@@ -387,6 +396,29 @@ namespace Damdor.Temporio
             return manager!.RunTimer(builder);
         }
         
+        /// <summary>
+        /// Determines whether both handles identify the same builder in the same manager,
+        /// regardless of whether it is still active.
+        /// </summary>
+        public readonly bool Equals(TimerBuilder other) =>
+            ReferenceEquals(timerManager, other.timerManager) && id == other.id;
+
+        /// <inheritdoc/>
+        public override readonly bool Equals(object obj) => obj is TimerBuilder other && Equals(other);
+
+        /// <inheritdoc/>
+        public override readonly int GetHashCode() => HashCode.Combine(timerManager, id);
+
+        /// <summary>
+        /// Determines whether two handles are equal.
+        /// </summary>
+        public static bool operator ==(TimerBuilder left, TimerBuilder right) => left.Equals(right);
+
+        /// <summary>
+        /// Determines whether two handles are different.
+        /// </summary>
+        public static bool operator !=(TimerBuilder left, TimerBuilder right) => !left.Equals(right);
+
         private InternalTimerBuilder GetInternalTimerBuilder()
         {
             return timerManager != null && timerManager.TryGetTarget(out var manager)

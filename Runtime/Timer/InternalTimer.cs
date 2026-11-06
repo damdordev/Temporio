@@ -18,6 +18,7 @@ namespace Damdor.Temporio
         public int InvocationLimit { get; set; }
         public int InvocationCount { get; set; }
         public string DebugName { get; set; }
+        public long GroupId { get; set; }
         
         internal void Reset()
         {

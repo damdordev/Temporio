@@ -20,6 +20,7 @@ Temporio is a timer scheduling library for Unity, with one-time and repeating ti
 - [Advanced](#advanced)
   - [Actions with context](#actions-with-context)
   - [Actions with parameter](#actions-with-parameter)
+  - [Timer groups](#timer-groups)
   - [Guards](#guards)
   - [MissingPeriodBehaviour](#missingperiodbehaviour)
   - [ITimeProvider](#itimeprovider)
@@ -279,6 +280,32 @@ timerManager.Schedule()
         Debug.Log($"Event {e.Id} finished {context.InvocationDelay} ago"))
     .Run();
 ```
+
+### Timer groups
+
+Creating timer you can attach it to a timer group. 
+
+```csharp
+var timerGroup = timerManager.CreateGroup("group name");
+
+timerGroup.Schedule()
+    .Every(TimeSpan.FromSeconds(1))
+    .Group(timerGroup)
+    .Action(() => Debug.Log("Timer group is still alive"))
+    .Run();
+```
+
+Then you can cancell all timers from that group at once:
+```csharp
+timerGroup.Cancel();
+```
+
+If you don't need a group anymore, you can dispose it:
+```csharp
+timerGroup.Dispose();
+```
+This operation cancels all tasks from the group and removes internal 
+data for group.
 
 ### Guards
 

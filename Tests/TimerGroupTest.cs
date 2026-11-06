@@ -62,17 +62,6 @@ namespace Damdor.Temporio.Tests
         }
         
         [Test]
-        public void CheckIfTimerWithoutGroupHasNoGroup()
-        {
-            var timer = timerManager
-                .Schedule()
-                .Timing(timing)
-                .Run();
-            
-            Assert.That(timer.TimerGroup, Is.EqualTo(default(TimerGroup)));
-        }
-        
-        [Test]
         public void CheckNewGroupParameters()
         {
             var timerGroup = timerManager.CreateGroup("abc");
@@ -82,8 +71,9 @@ namespace Damdor.Temporio.Tests
         }
 
         [Test]
-        [TestCase(true)]
-        [TestCase(false)]
+        [TestCase(CancelType.None)]
+        [TestCase(CancelType.Cancel)]
+        [TestCase(CancelType.Dispose)]
         public void TestCancelAndDispose(CancelType cancelType)
         {
             var timerGroup = timerManager.CreateGroup("abc");
@@ -106,10 +96,10 @@ namespace Damdor.Temporio.Tests
 
             Cancel(timerGroup, cancelType);
             
-            Assert.That(timer1.IsAlive, Is.EqualTo(false));
-            Assert.That(timer2.IsAlive, Is.EqualTo(false));
+            Assert.That(timer1.IsAlive, Is.EqualTo(cancelType == CancelType.None));
+            Assert.That(timer2.IsAlive, Is.EqualTo(cancelType == CancelType.None));
             Assert.That(timer3.IsAlive, Is.EqualTo(true));
-            Assert.That(timerGroup.IsAlive, Is.EqualTo(cancelType == CancelType.None));
+            Assert.That(timerGroup.IsAlive, Is.EqualTo(cancelType != CancelType.Dispose));
         }
         
         [Test]

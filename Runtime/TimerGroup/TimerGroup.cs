@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using NUnit.Framework;
 
 namespace Damdor.Temporio
 {
@@ -13,19 +12,19 @@ namespace Damdor.Temporio
     /// in the group. Timer groups are tied to the manager that created them and should only be
     /// used with timers scheduled by that same manager.
     /// </remarks>
-    public readonly struct TimerGroup
+    public readonly struct TimerGroup : IEquatable<TimerGroup>
     {
         /// <summary>
         /// Gets a value indicating whether this timer group is alive and can still be used.
         /// </summary>
-        public bool IsAlive => false;
+        public bool IsAlive => GetInternalTimerGroup() != null;
 
         /// <summary>
         /// Gets the name assigned to this timer group.
         /// </summary>
-        public string Name => "";
+        public string Name => GetInternalTimerGroup()?.Name ?? "";
 
-        private readonly WeakReference<TimerManager> timerManager;
+        internal readonly WeakReference<TimerManager> timerManager;
         internal readonly long id;
         
         internal TimerGroup(WeakReference<TimerManager> timerManager, long id)
@@ -40,7 +39,13 @@ namespace Damdor.Temporio
         /// <return>
         /// The number of timers that were canceled.
         /// </return>
-        public int Cancel() => 0;
+        public int Cancel()
+        {
+            var internalGroup = GetInternalTimerGroup();
+            if (internalGroup == null) return 0;
+            timerManager.TryGetTarget(out var manager);
+            return manager!.CancelGroup(id);
+        }
 
         /// <summary>
         /// Releases this timer group and cancels all timers associated with it.
@@ -48,6 +53,10 @@ namespace Damdor.Temporio
         /// </summary>
         public void Dispose()
         {
+            var internalGroup = GetInternalTimerGroup();
+            if (internalGroup == null) return;
+            timerManager.TryGetTarget(out var manager);
+            manager!.DisposeGroup(id);
         }
 
         /// <summary>
@@ -58,6 +67,9 @@ namespace Damdor.Temporio
         /// </param>
         public void GetTimersInGroup(List<Timer> list)
         {
+            if (!IsAlive) return;
+            timerManager.TryGetTarget(out var manager);
+            manager!.GetTimersForGroup(id, list);
         }
 
         /// <summary>
@@ -66,6 +78,43 @@ namespace Damdor.Temporio
         /// <return>
         /// A list containing the timers currently associated with this timer group.
         /// </return>
-        public List<Timer> GetTimersInGroup() => null;
+        public List<Timer> GetTimersInGroup()
+        {
+            if (!IsAlive) return new List<Timer>();
+            timerManager.TryGetTarget(out var manager);
+            var list = new List<Timer>();
+            manager!.GetTimersForGroup(id, list);
+            return list;
+        }
+        
+        /// <summary>
+        /// Determines whether both handles identify the same timer group in the same manager,
+        /// regardless of whether it is still active.
+        /// </summary>
+        public bool Equals(TimerGroup other) =>
+            ReferenceEquals(timerManager, other.timerManager) && id == other.id;
+
+        /// <inheritdoc/>
+        public override bool Equals(object obj) => obj is TimerGroup other && Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(timerManager, id);
+
+        /// <summary>
+        /// Determines whether two handles are equal.
+        /// </summary>
+        public static bool operator ==(TimerGroup left, TimerGroup right) => left.Equals(right);
+
+        /// <summary>
+        /// Determines whether two handles are different.
+        /// </summary>
+        public static bool operator !=(TimerGroup left, TimerGroup right) => !left.Equals(right);
+
+        private InternalTimerGroup GetInternalTimerGroup()
+        {
+            return timerManager != null && timerManager.TryGetTarget(out var manager)
+                ? manager.GetInternalGroupId(id)
+                : null;
+        }
     }
 }

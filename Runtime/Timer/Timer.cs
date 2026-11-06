@@ -11,7 +11,7 @@ namespace Damdor.Temporio
     /// If the associated manager is no longer available, timer state information may be unavailable and default
     /// values may be returned by state queries.
     /// </remarks>
-    public readonly struct Timer
+    public readonly struct Timer : IEquatable<Timer>
     {
         /// <summary>
         /// Gets a value indicating whether the associated timer is currently alive.
@@ -33,7 +33,14 @@ namespace Damdor.Temporio
         /// <remarks>
         /// This property provides access to the group assigned to the timer by the timer manager. If the associated timer manager can no longer be reached or the timer is no longer available, the returned handle may represent a default or inactive group.
         /// </remarks>
-        public TimerGroup TimerGroup => default;
+        public TimerGroup TimerGroup
+        {
+            get
+            {
+                var internalTimer = GetInternalTimer();
+                return internalTimer != null ? new TimerGroup(timerManager, internalTimer.GroupId) : default;
+            }
+        }
 
         /// <summary>
         /// Gets a value indicating whether the associated timer is periodic.
@@ -125,6 +132,29 @@ namespace Damdor.Temporio
         public bool Cancel() => timerManager != null && timerManager.TryGetTarget(out var manager)
             && manager.CancelTimer(id);
         
+        /// <summary>
+        /// Determines whether both handles identify the same timer in the same manager,
+        /// regardless of whether it is still active.
+        /// </summary>
+        public bool Equals(Timer other) =>
+            ReferenceEquals(timerManager, other.timerManager) && id == other.id;
+
+        /// <inheritdoc/>
+        public override bool Equals(object obj) => obj is Timer other && Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() => HashCode.Combine(timerManager, id);
+
+        /// <summary>
+        /// Determines whether two handles are equal.
+        /// </summary>
+        public static bool operator ==(Timer left, Timer right) => left.Equals(right);
+
+        /// <summary>
+        /// Determines whether two handles are different.
+        /// </summary>
+        public static bool operator !=(Timer left, Timer right) => !left.Equals(right);
+
         private InternalTimer GetInternalTimer()
         {
             return timerManager != null && timerManager.TryGetTarget(out var manager)

@@ -16,6 +16,7 @@ namespace Damdor.Temporio
         public int InvocationLimit { get; set; }
         public MissingPeriodBehaviour MissingPeriodBehaviour { get; set; }
         public PlayerLoopTiming Timing { get; set; }
+        public long TimerGroup { get; set; }
         
         internal void Reset()
         {
@@ -30,6 +31,7 @@ namespace Damdor.Temporio
             InvocationLimit = 0;
             MissingPeriodBehaviour = MissingPeriodBehaviour.RunOnce;
             Timing = PlayerLoopTiming.Update;
+            TimerGroup = 0;
         }
     }
 }
