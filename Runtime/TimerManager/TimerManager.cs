@@ -31,17 +31,20 @@ namespace Damdor.Temporio
         private InternalTimer executingTimer;
         private TimerExceptionHandler errorHandler;
         private readonly List<long> updateTimers = new();
+        private readonly bool updateProviderCreated;
         
         /// <summary>
         /// Creates a new instance of <see cref="TimerManager"/>. 
         /// </summary>
         /// <param name="timeProvider">Provider for current time.</param>
-        /// <param name="updateProvider">Provider for update events. If null, <see cref="MonoUpdateProvider"/> will be used.</param>
+        /// <param name="updateProvider">Provider for update events. If null, <see cref="MonoUpdateProvider"/> will be used.
+        /// Passed provider doesn't own the timer manager and will not be disposed when timer manager is disposed.</param>
         /// <exception cref="ArgumentNullException">Thrown if <see cref="timeProvider"/> parameter is null.</exception>
         public TimerManager(ITimeProvider timeProvider, IUpdateProvider updateProvider = null)
         {
             this.timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
             this.updateProvider = updateProvider ?? new MonoUpdateProvider();
+            updateProviderCreated = updateProvider == null;
             weakReference = new WeakReference<TimerManager>(this);
             Pooling = new TemporioPooling();
         }
@@ -79,7 +82,7 @@ namespace Damdor.Temporio
             updateProvider.Unregister(PlayerLoopTiming.Update, OnUpdate);
             updateProvider.Unregister(PlayerLoopTiming.FixedUpdate, OnFixedUpdate);
             updateProvider.Unregister(PlayerLoopTiming.LateUpdate, OnLateUpdate);
-            
+            if (updateProviderCreated) updateProvider.Dispose();
             Pooling.Dispose();
         }
 
