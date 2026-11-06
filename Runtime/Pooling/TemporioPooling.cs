@@ -55,6 +55,8 @@ namespace Damdor.Temporio
 
         #region Guard
 
+        private readonly ObjectPool<CancellationTokenTimeGuard> cancellationTokenTimeGuardPool =
+            new(100, data => data.Reset(), () => new CancellationTokenTimeGuard());
         private readonly ObjectPool<GameObjectTimerGuard> gameObjectTimerGuardPool =
             new(100, data => data.Reset(), () => new GameObjectTimerGuard());
         private readonly ObjectPool<ConditionTimerGuard> conditionTimerGuardPool =
@@ -62,6 +64,8 @@ namespace Damdor.Temporio
         private readonly Dictionary<Type, ObjectPool<TimerGuard>>
             parametrizeConditionTimerGuardPools = new();
 
+        public CancellationTokenTimeGuard PopCancellationTokenTimeGuard() => cancellationTokenTimeGuardPool.Pop();
+        public void ReleaseCancellationTokenTimeGuard(CancellationTokenTimeGuard guard) => cancellationTokenTimeGuardPool.Release(guard);
         public GameObjectTimerGuard PopGameObjectTimerGuard() => gameObjectTimerGuardPool.Pop();
         public void ReleaseGameObjectTimerGuard(GameObjectTimerGuard guard) => gameObjectTimerGuardPool.Release(guard);
         public ConditionTimerGuard PopConditionTimerGuard() => conditionTimerGuardPool.Pop();
@@ -101,6 +105,7 @@ namespace Damdor.Temporio
         {
             internalTimerPool.Dispose();
             timerInvocationWithoutParameterPool.Dispose();
+            cancellationTokenTimeGuardPool.Dispose();
             gameObjectTimerGuardPool.Dispose();
             conditionTimerGuardPool.Dispose();
             internalTimerBuilderPool.Dispose();

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Damdor.Temporio
 {
@@ -119,8 +120,14 @@ namespace Damdor.Temporio
         /// </summary>
         public bool LogErrors { get; set; } = true;
 
+        /// <summary>
+        /// Creates a new named timer group that can be assigned to timers scheduled by this manager.
+        /// </summary>
+        /// <param name="name">Name assigned to the timer group.</param>
+        /// <returns>A <see cref="TimerGroup"/> representing the created timer group.</returns>
         public TimerGroup CreateGroup(string name)
         {
+            if (isDisposed) throw new ObjectDisposedException(nameof(TimerManager));
             var id = checked(++lastGroupId);
             var internalGroup = Pooling.PopInternalTimerGroup();
             internalGroup.Reset();

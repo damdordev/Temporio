@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using UnityEngine;
 
 namespace Damdor.Temporio
@@ -331,6 +332,29 @@ namespace Damdor.Temporio
             timerManager.TryGetTarget(out var manager);
             var guard = manager!.Pooling.PopParametrizeConditionTimerGuard<T>();
             guard.Setup(condition, parameter);
+            builder.Guards.Add(guard);
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a guard that cancels the timer when cancellation is requested.
+        /// The token is checked during the timer's selected update phase, even before the timer is due.
+        /// Multiple tokens can be added; cancellation of any token cancels the timer.
+        /// </summary>
+        /// <param name="cancellationToken">
+        /// The <see cref="CancellationToken"/> to observe for cancellation.
+        /// </param>
+        /// <returns>
+        /// The current instance of <see cref="TimerBuilder"/>, allowing for method chaining.
+        /// </returns>
+        /// <exception cref="TimerBuilderInvalidException">Thrown if used on a builder that is not valid</exception>
+        public TimerBuilder CancellationToken(CancellationToken cancellationToken)
+        {
+            var builder = GetInternalTimerBuilderOrThrow();
+            if (!cancellationToken.CanBeCanceled) return this;
+            timerManager.TryGetTarget(out var manager);
+            var guard = manager!.Pooling.PopCancellationTokenTimeGuard();
+            guard.Setup(cancellationToken);
             builder.Guards.Add(guard);
             return this;
         }

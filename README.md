@@ -309,7 +309,7 @@ data for group.
 
 ### Guards
 
-Guards automatically cancel a timer when its owner is destroyed or a cancellation condition becomes true. They are checked during the timer's selected update phase, even before its next invocation is due. Multiple guards can be combined; any one can cancel the timer.
+Guards automatically cancel a timer when its owner is destroyed, a cancellation condition becomes true, or a cancellation token is cancelled. They are checked during the timer's selected update phase, even before its next invocation is due. Multiple guards can be combined; any one can cancel the timer.
 
 **GameObject lifetime** — cancel when a GameObject is destroyed. In a `MonoBehaviour`:
 
@@ -345,6 +345,23 @@ timerManager.Schedule()
     .Action(evt, static e => Debug.Log($"Event {e.Id} is finished"))
     .Run();
 ```
+
+**Cancellation token** — cancel when a `System.Threading.CancellationToken` requests cancellation:
+
+```csharp
+using var cancellation = new System.Threading.CancellationTokenSource();
+
+timerManager.Schedule()
+    .Every(TimeSpan.FromSeconds(1))
+    .CancellationToken(cancellation.Token)
+    .Action(() => Debug.Log("Still running"))
+    .Run();
+
+// The timer will be cancelled during its next selected update phase.
+cancellation.Cancel();
+```
+
+An already cancelled token prevents the timer's first invocation. `CancellationToken.None` has no effect. You can chain multiple `CancellationToken` calls and combine them with other guards; any cancellation stops the timer. Keep the token source alive until you no longer need to request cancellation, then dispose it.
 
 ### MissingPeriodBehaviour
 

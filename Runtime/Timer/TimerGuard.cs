@@ -1,3 +1,4 @@
+using System.Threading;
 using UnityEngine;
 
 namespace Damdor.Temporio
@@ -10,6 +11,28 @@ namespace Damdor.Temporio
 
     }
     
+    internal class CancellationTokenTimeGuard : TimerGuard
+    {
+        private CancellationToken cancellationToken;
+
+        internal void Setup(CancellationToken cancellationToken)
+        {
+            this.cancellationToken = cancellationToken;
+        }
+
+        public override bool Check() => !cancellationToken.IsCancellationRequested;
+
+        internal override void Reset()
+        {
+            cancellationToken = default;
+        }
+
+        internal override void ReturnToPool(TemporioPooling pooling)
+        {
+            pooling.ReleaseCancellationTokenTimeGuard(this);
+        }
+    }
+
     internal class GameObjectTimerGuard : TimerGuard
     {
         private GameObject gameObject;

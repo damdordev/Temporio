@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using NUnit.Framework;
 // ReSharper disable AccessToModifiedClosure
 
@@ -41,6 +42,96 @@ namespace Damdor.Temporio.Tests
         public void TearDown()
         {
             timerManager?.Dispose();
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void CancellationToken_CancelsBeforeFirstInvocation(bool alreadyCancelled)
+        {
+            using var cancellation = new CancellationTokenSource();
+            if (alreadyCancelled) cancellation.Cancel();
+            var calls = 0;
+            var timer = Schedule().After(TimeSpan.FromSeconds(10))
+                .CancellationToken(cancellation.Token).Action(() => calls++).Run();
+
+            if (!alreadyCancelled) cancellation.Cancel();
+            Assert.That(timer.IsAlive, Is.True);
+            TickAt(timeProvider.Now);
+
+            Assert.That(timer.IsAlive, Is.False);
+            TickAt(timeProvider.Now.AddSeconds(20));
+            Assert.That(calls, Is.Zero);
+        }
+
+        [Test]
+        public void CancellationToken_StopsFutureRepetitions()
+        {
+            using var cancellation = new CancellationTokenSource();
+            var calls = 0;
+            var timer = Schedule().Every(TimeSpan.FromSeconds(1))
+                .CancellationToken(cancellation.Token).Action(() => calls++).Run();
+
+            TickAt(timeProvider.Now);
+            Assert.That(calls, Is.EqualTo(1));
+            Assert.That(timer.IsAlive, Is.True);
+
+            cancellation.Cancel();
+            TickAt(timeProvider.Now.AddSeconds(1));
+            TickAt(timeProvider.Now.AddSeconds(1));
+
+            Assert.That(timer.IsAlive, Is.False);
+            Assert.That(calls, Is.EqualTo(1));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void CancellationToken_UncancelledOrDefaultTokenAllowsInvocation(bool useDefaultToken)
+        {
+            using var cancellation = new CancellationTokenSource();
+            var calls = 0;
+            var timer = Schedule().CancellationToken(useDefaultToken ? default : cancellation.Token)
+                .Action(() => calls++).Run();
+
+            TickAt(timeProvider.Now);
+
+            Assert.That(calls, Is.EqualTo(1));
+            Assert.That(timer.IsAlive, Is.False);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void CancellationToken_AnyTokenCanCancelAlongsideOtherGuards(bool cancelFirstToken)
+        {
+            using var first = new CancellationTokenSource();
+            using var second = new CancellationTokenSource();
+            var calls = 0;
+            var timer = Schedule().After(TimeSpan.FromSeconds(10)).CancelIf(() => false)
+                .CancellationToken(first.Token).CancellationToken(second.Token)
+                .Action(() => calls++).Run();
+
+            TickAt(timeProvider.Now);
+            Assert.That(timer.IsAlive, Is.True);
+            (cancelFirstToken ? first : second).Cancel();
+            TickAt(timeProvider.Now);
+
+            Assert.That(timer.IsAlive, Is.False);
+            Assert.That(calls, Is.Zero);
+        }
+
+        [Test]
+        public void CancellationToken_IsCheckedOnlyInSelectedUpdatePhase()
+        {
+            using var cancellation = new CancellationTokenSource();
+            var timer = Schedule().After(TimeSpan.FromSeconds(10))
+                .CancellationToken(cancellation.Token).Run();
+            cancellation.Cancel();
+
+            foreach (PlayerLoopTiming phase in Enum.GetValues(typeof(PlayerLoopTiming)))
+                if (phase != timing) updateProvider.Tick(phase);
+
+            Assert.That(timer.IsAlive, Is.True);
+            TickAt(timeProvider.Now);
+            Assert.That(timer.IsAlive, Is.False);
         }
 
         [Test]

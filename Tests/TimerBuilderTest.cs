@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using NUnit.Framework;
 using UnityEngine;
 // ReSharper disable AccessToModifiedClosure
@@ -30,6 +31,7 @@ namespace Damdor.Temporio.Tests
             CancelOnDestroy,
             CancelIf,
             CancelIfWithParameter,
+            CancellationToken,
             DebugName,
             Run
         }
@@ -405,7 +407,8 @@ namespace Damdor.Temporio.Tests
             var period = TimeSpan.FromSeconds(2);
             var builder = timerManager.Schedule().When(start).Every(period).InvocationLimit(3)
                 .Timing(PlayerLoopTiming.LateUpdate).MissingPeriodBehaviour(MissingPeriodBehaviour.RunAll)
-                .DebugName("configured timer").Action(() => { }).CancelIf(() => false);
+                .DebugName("configured timer").Action(() => { }).CancelIf(() => false)
+                .CancellationToken(new CancellationToken(true));
             // Snapshot the contents: Run may reset and release the internal builder to its pool.
             var invocations = GetInternalBuilder(builder).Invocations.ToArray();
             var guards = GetInternalBuilder(builder).Guards.ToArray();
@@ -450,6 +453,7 @@ namespace Damdor.Temporio.Tests
                 case BuilderMethod.CancelOnDestroy: builder.CancelOnDestroy(CreateOwner()); break;
                 case BuilderMethod.CancelIf: builder.CancelIf(() => false); break;
                 case BuilderMethod.CancelIfWithParameter: builder.CancelIf(42, _ => false); break;
+                case BuilderMethod.CancellationToken: builder.CancellationToken(default); break;
                 case BuilderMethod.DebugName: builder.DebugName("invalid"); break;
                 case BuilderMethod.Run: builder.Run(); break;
                 default: throw new ArgumentOutOfRangeException(nameof(method));
