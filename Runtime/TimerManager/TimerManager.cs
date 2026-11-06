@@ -132,7 +132,7 @@ namespace Damdor.Temporio
             if (isDisposed) throw new ObjectDisposedException(nameof(TimerManager));
             if (builder.IsRepeating && builder.RepeatInterval <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(builder.RepeatInterval), "Repeat interval must be positive.");
-            timerBuilders.Remove(builder.InternalId);
+            timerBuilders.Remove(builder.Id);
             var internalId = checked(++lastTimerInternalId);
             CreateNewInternalTimer(internalId, builder);
             ReleaseInternalTimerBuilder(builder);
@@ -150,7 +150,7 @@ namespace Damdor.Temporio
         {
             var builder = Pooling.PopInternalTimerBuilder();
             builder.Reset();
-            builder.InternalId = internalId;
+            builder.Id = internalId;
             timerBuilders.Add(internalId, builder);
         }
         
@@ -158,7 +158,7 @@ namespace Damdor.Temporio
         {
             var timer = Pooling.PopInternalTimer();
             timer.Reset();
-            timer.InternalId = internalId;
+            timer.Id = internalId;
             timer.StartTime = builder.HasStartTime ? builder.StartTime : Now;
             timer.NextInvocationTime = timer.StartTime;
             timer.RepeatInterval = builder.RepeatInterval;
@@ -226,17 +226,17 @@ namespace Damdor.Temporio
             {
                 try
                 {
-                    if (guard.Check() && timers.ContainsKey(timer.InternalId)) continue;
+                    if (guard.Check() && timers.ContainsKey(timer.Id)) continue;
                 }
                 catch (Exception exception)
                 {
                     ReportException(timer, exception);
                 }
-                CancelTimer(timer.InternalId);
+                CancelTimer(timer.Id);
                 return;
             }
 
-            while (timers.ContainsKey(timer.InternalId) && timer.NextInvocationTime <= now)
+            while (timers.ContainsKey(timer.Id) && timer.NextInvocationTime <= now)
             {
                 var context = new TimerInvocationContext(timer.InvocationCount, now, timer.NextInvocationTime);
                 var cancelOnException = false;
@@ -256,15 +256,15 @@ namespace Damdor.Temporio
 
                 if (!timer.IsRepeating || cancelOnException ||
                     (timer.InvocationLimit > 0 && timer.InvocationCount >= timer.InvocationLimit))
-                    CancelTimer(timer.InternalId);
-                if (!timers.ContainsKey(timer.InternalId)) return;
+                    CancelTimer(timer.Id);
+                if (!timers.ContainsKey(timer.Id)) return;
 
                 var periods = timer.MissingPeriodBehaviour == MissingPeriodBehaviour.RunAll
                     ? 1
                     : (now - timer.NextInvocationTime).Ticks / timer.RepeatInterval.Ticks + 1;
                 if (periods > (DateTime.MaxValue.Ticks - timer.NextInvocationTime.Ticks) / timer.RepeatInterval.Ticks)
                 {
-                    CancelTimer(timer.InternalId);
+                    CancelTimer(timer.Id);
                     return;
                 }
                 timer.NextInvocationTime = timer.NextInvocationTime.AddTicks(periods * timer.RepeatInterval.Ticks);

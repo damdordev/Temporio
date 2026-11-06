@@ -96,12 +96,12 @@ namespace Damdor.Temporio
         public int InvocationCount => GetInternalTimer()?.InvocationCount ?? 0;
 
         private readonly WeakReference<TimerManager> timerManager;
-        internal readonly long internalId;
+        internal readonly long id;
         
-        internal Timer(WeakReference<TimerManager> timerManager, long internalId)
+        internal Timer(WeakReference<TimerManager> timerManager, long id)
         {
             this.timerManager = timerManager;
-            this.internalId = internalId;
+            this.id = id;
         }
 
         /// <summary>
@@ -112,12 +112,12 @@ namespace Damdor.Temporio
         /// true if the timer was successfully cancelled; otherwise, false.
         /// </return>
         public bool Cancel() => timerManager != null && timerManager.TryGetTarget(out var manager)
-            && manager.CancelTimer(internalId);
+            && manager.CancelTimer(id);
         
         private InternalTimer GetInternalTimer()
         {
             return timerManager != null && timerManager.TryGetTarget(out var manager)
-                ? manager.GetInternalTimer(internalId)
+                ? manager.GetInternalTimer(id)
                 : null;
         }
         

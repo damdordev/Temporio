@@ -67,7 +67,7 @@ namespace Damdor.Temporio.Tests
 
             Assert.That(builder.IsValid, Is.True);
             var internalBuilder = GetInternalBuilder(builder);
-            Assert.That(internalBuilder.InternalId, Is.EqualTo(builder.internalId));
+            Assert.That(internalBuilder.Id, Is.EqualTo(builder.id));
             Assert.That(GetInternalBuilder(builder), Is.SameAs(internalBuilder));
             Assert.That(internalBuilder.DebugName, Is.EqualTo(null));
             Assert.That(internalBuilder.Guards.Count, Is.EqualTo(0));
@@ -87,7 +87,7 @@ namespace Damdor.Temporio.Tests
             first.DebugName("first");
             second.DebugName("second");
 
-            Assert.That(GetInternalBuilder(first).InternalId, Is.Not.EqualTo(second.internalId));
+            Assert.That(GetInternalBuilder(first).Id, Is.Not.EqualTo(second.id));
             Assert.That(GetInternalBuilder(first), Is.Not.SameAs(GetInternalBuilder(second)));
             Assert.That(GetInternalBuilder(first).DebugName, Is.EqualTo("first"));
             Assert.That(GetInternalBuilder(second).DebugName, Is.EqualTo("second"));
@@ -104,7 +104,7 @@ namespace Damdor.Temporio.Tests
             var result = builder.When(expected);
 
             Assert.That(GetInternalBuilder(builder).StartTime, Is.EqualTo(expected));
-            Assert.That(GetInternalBuilder(result).InternalId, Is.EqualTo(builder.internalId));
+            Assert.That(GetInternalBuilder(result).Id, Is.EqualTo(builder.id));
         }
 
         [TestCase(-5)]
@@ -420,7 +420,7 @@ namespace Damdor.Temporio.Tests
             Assert.That(timer.TimeToNextInvocation, Is.EqualTo(TimeSpan.FromSeconds(10)));
             Assert.That(timer.InvocationLimit, Is.EqualTo(3));
             Assert.That(timer.InvocationCount, Is.Zero);
-            var internalTimer = timerManager.GetInternalTimer(timer.internalId);
+            var internalTimer = timerManager.GetInternalTimer(timer.id);
             Assert.That(internalTimer, Is.Not.Null);
             Assert.That(internalTimer.StartTime, Is.EqualTo(start));
             Assert.That(internalTimer.RepeatInterval, Is.EqualTo(period));
@@ -471,7 +471,7 @@ namespace Damdor.Temporio.Tests
 
         private InternalTimerBuilder GetInternalBuilder(TimerBuilder builder)
         {
-            var internalBuilder = timerManager.GetInternalTimerBuilder(builder.internalId);
+            var internalBuilder = timerManager.GetInternalTimerBuilder(builder.id);
             Assert.That(internalBuilder, Is.Not.Null, "Schedule must register the corresponding internal builder.");
             return internalBuilder;
         }

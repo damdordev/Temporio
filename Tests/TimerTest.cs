@@ -53,9 +53,9 @@ namespace Damdor.Temporio.Tests
 
             var firstInternal = GetInternalTimer(first);
             var secondInternal = GetInternalTimer(second);
-            Assert.That(firstInternal.InternalId, Is.EqualTo(first.internalId));
-            Assert.That(secondInternal.InternalId, Is.EqualTo(second.internalId));
-            Assert.That(first.internalId, Is.Not.EqualTo(second.internalId));
+            Assert.That(firstInternal.Id, Is.EqualTo(first.id));
+            Assert.That(secondInternal.Id, Is.EqualTo(second.id));
+            Assert.That(first.id, Is.Not.EqualTo(second.id));
             Assert.That(firstInternal, Is.Not.SameAs(secondInternal));
             Assert.That(GetInternalTimer(first), Is.SameAs(firstInternal));
             Assert.That(GetInternalTimer(second), Is.SameAs(secondInternal));
@@ -642,7 +642,7 @@ namespace Damdor.Temporio.Tests
 
         private InternalTimer GetInternalTimer(Timer timer)
         {
-            var internalTimer = timerManager.GetInternalTimer(timer.internalId);
+            var internalTimer = timerManager.GetInternalTimer(timer.id);
             Assert.That(internalTimer, Is.Not.Null);
             return internalTimer;
         }

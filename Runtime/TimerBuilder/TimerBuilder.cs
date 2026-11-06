@@ -14,7 +14,7 @@ namespace Damdor.Temporio
     public struct TimerBuilder
     {
         private WeakReference<TimerManager> timerManager;
-        internal long internalId;
+        internal long id;
 
         /// <summary>
         /// Gets a value indicating whether this builder is still valid and can be used to configure and run the timer.
@@ -27,10 +27,10 @@ namespace Damdor.Temporio
         /// </summary>
         public bool IsValid => GetInternalTimerBuilder() != null;
 
-        internal void Setup(WeakReference<TimerManager> timerManager, long internalId)
+        internal void Setup(WeakReference<TimerManager> timerManager, long id)
         {
             this.timerManager = timerManager;
-            this.internalId = internalId;
+            this.id = id;
         }
 
         /// <summary>
@@ -376,7 +376,7 @@ namespace Damdor.Temporio
         private InternalTimerBuilder GetInternalTimerBuilder()
         {
             return timerManager != null && timerManager.TryGetTarget(out var manager)
-                ? manager.GetInternalTimerBuilder(internalId)
+                ? manager.GetInternalTimerBuilder(id)
                 : null;
         }
 
