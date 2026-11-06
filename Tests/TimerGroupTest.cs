@@ -317,6 +317,15 @@ namespace Damdor.Temporio.Tests
             Assert.That(group.IsAlive, Is.False);
         }
         
+        [Test]
+        public void TestIfStartingTimerWithDisposedGroupThrowsAnException()
+        {
+            var group = timerManager.CreateGroup("new");
+            var builder = timerManager.Schedule().Group(group);
+            group.Dispose();
+            Assert.Throws<ArgumentOutOfRangeException>(() => builder.Run());
+        }
+        
         private void TickAt(DateTime time)
         {
             timeProvider.Now = time;

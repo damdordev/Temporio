@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Damdor.Temporio
 {
@@ -155,9 +156,12 @@ namespace Damdor.Temporio
         
         internal Timer RunTimer(InternalTimerBuilder builder)
         {
-            if (isDisposed) throw new ObjectDisposedException(nameof(TimerManager));
-            if (builder.IsRepeating && builder.RepeatInterval <= TimeSpan.Zero)
+            if (isDisposed) 
+                throw new ObjectDisposedException(nameof(TimerManager));
+            if (builder.IsRepeating && builder.RepeatInterval <= TimeSpan.Zero) 
                 throw new ArgumentOutOfRangeException(nameof(builder.RepeatInterval), "Repeat interval must be positive.");
+            if (builder.TimerGroup > 0 && !timerGroups.ContainsKey(builder.TimerGroup))
+                throw new ArgumentOutOfRangeException(nameof(builder.TimerGroup), "Trying to run timer with disposed group");
             timerBuilders.Remove(builder.Id);
             var internalId = checked(++lastTimerId);
             CreateNewInternalTimer(internalId, builder);
