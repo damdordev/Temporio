@@ -315,7 +315,7 @@ Creating timer you can attach it to a timer group.
 ```csharp
 var timerGroup = timerManager.CreateGroup("group name");
 
-timerGroup.Schedule()
+timeManager.Schedule()
     .Every(TimeSpan.FromSeconds(1))
     .Group(timerGroup)
     .Action(() => Debug.Log("Timer group is still alive"))

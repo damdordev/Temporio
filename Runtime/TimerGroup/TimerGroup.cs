@@ -83,13 +83,14 @@ namespace Damdor.Temporio
         }
 
         /// <summary>
-        /// Adds the timers associated with this timer group to the specified list.
+        /// Gets the timers associated with this timer group to the specified list.
         /// </summary>
         /// <param name="list">
         /// The list to receive the timers in this group.
         /// </param>
         public void GetTimersInGroup(List<Timer> list)
         {
+            list.Clear();
             if (!IsAlive) return;
             timerManager.TryGetTarget(out var manager);
             manager!.GetTimersForGroup(id, list);
