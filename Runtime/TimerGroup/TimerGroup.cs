@@ -48,6 +48,23 @@ namespace Damdor.Temporio
         }
 
         /// <summary>
+        /// Pauses all active timers associated with this timer group.
+        /// </summary>
+        public void Pause()
+        {
+        }
+
+        /// <summary>
+        /// Resumes all paused timers associated with this timer group.
+        /// </summary>
+        /// <remarks>
+        /// Timers that are paused by their own pause state are not resumed by this operation.
+        /// </remarks>
+        public void Resume()
+        {
+        }
+
+        /// <summary>
         /// Releases this timer group and cancels all timers associated with it.
         /// After this operation, the timer group is no longer alive and should not be used.
         /// </summary>

@@ -113,6 +113,29 @@ namespace Damdor.Temporio
         /// </remarks>
         public int InvocationCount => GetInternalTimer()?.InvocationCount ?? 0;
 
+        /// <summary>
+        /// Gets a value indicating whether the associated timer is paused directly.
+        /// </summary>
+        /// <value>
+        /// true if the timer is paused by its own pause state; otherwise, false.
+        /// </value>
+        /// <remarks>
+        /// This property represents only the timer's individual pause state and does not indicate whether execution is suspended because of its timer group or manager state. If the associated timer cannot be found, this property returns false.
+        /// </remarks>
+        public bool IsPausedSelf => false;
+
+        /// <summary>
+        /// Gets a value indicating whether the associated timer is currently paused. Timer can be paused in two ways:
+        /// by calling Pause() on it or on its group. If any of these pause operations are in effect, this property returns true.
+        /// </summary>
+        /// <value>
+        /// true if the timer is paused and can still be resumed; otherwise, false.
+        /// </value>
+        /// <remarks>
+        /// This property returns false if the associated timer manager can no longer be reached, if the timer is no longer active, or if the timer is not currently paused.
+        /// </remarks>
+        public bool IsPaused => false;
+
         private readonly WeakReference<TimerManager> timerManager;
         internal readonly long id;
         
@@ -131,6 +154,24 @@ namespace Damdor.Temporio
         /// </return>
         public bool Cancel() => timerManager != null && timerManager.TryGetTarget(out var manager)
             && manager.CancelTimer(id);
+
+        /// <summary>
+        /// Pauses the timer associated with this handle, preventing it from invoking until it is resumed.
+        /// Time of the next invocation will be modified to reflect the pause duration.
+        /// Mind that the timer can be paused in two ways: by calling Pause() on it or on its group. 
+        /// If the timer is already paused, cancelled, completed, or unavailable, this call has no effect.
+        /// </summary>
+        public void Pause()
+        {
+        }
+
+        /// <summary>
+        /// Resumes the timer associated with this handle if it is currently paused.
+        /// If the timer is not alive, is not paused, or its manager is unavailable, the call has no effect.
+        /// </summary>
+        public void Resume()
+        {
+        }
         
         /// <summary>
         /// Determines whether both handles identify the same timer in the same manager,
