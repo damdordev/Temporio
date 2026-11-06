@@ -23,6 +23,9 @@ namespace Damdor.Temporio
         public bool IsPausedByGroup { get; set; }
         public bool IsPaused => IsPausedSelf || IsPausedByGroup;
         public DateTime PausedAt { get; set; }
+        #if DAMDOR_TEMPORIO_UNITASK
+        public Cysharp.Threading.Tasks.UniTaskCompletionSource<bool> NextInvocationCompletion { get; set; }
+        #endif
         
         internal void Reset()
         {
@@ -41,6 +44,9 @@ namespace Damdor.Temporio
             IsPausedSelf = false;
             IsPausedByGroup = false;
             PausedAt = default;
+            #if DAMDOR_TEMPORIO_UNITASK
+            NextInvocationCompletion = null;
+            #endif
         }
     }
 }

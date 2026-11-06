@@ -1,4 +1,8 @@
 using System;
+using System.Threading;
+#if DAMDOR_TEMPORIO_UNITASK
+using Cysharp.Threading.Tasks;
+#endif
 
 namespace Damdor.Temporio
 {
@@ -204,6 +208,29 @@ namespace Damdor.Temporio
         /// Determines whether two handles are different.
         /// </summary>
         public static bool operator !=(Timer left, Timer right) => !left.Equals(right);
+
+#if DAMDOR_TEMPORIO_UNITASK
+        /// <summary>
+        /// Waits asynchronously until the associated timer's next invocation finishes its actions.
+        /// </summary>
+        /// <param name="cancellationToken">A token that can be used to cancel the wait operation.</param>
+        /// <returns>True after the next invocation; false if the wait is cancelled or the timer becomes unavailable first.</returns>
+        /// <remarks>
+        /// Cancelling the wait does not cancel the timer. Paused timers remain pending until resumed or cancelled.
+        /// A wait started inside an action observes the following invocation, not the one already in progress.
+        /// </remarks>
+        public async UniTask<bool> WaitForInvocation(CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested) return false;
+            var internalTimer = GetInternalTimer();
+            if (internalTimer == null) return false;
+
+            internalTimer.NextInvocationCompletion ??= new UniTaskCompletionSource<bool>();
+            var (isCancelled, invoked) = await internalTimer.NextInvocationCompletion.Task
+                .AttachExternalCancellation(cancellationToken).SuppressCancellationThrow();
+            return !isCancelled && invoked;
+        }
+#endif
 
         private InternalTimer GetInternalTimer()
         {

@@ -76,12 +76,14 @@ namespace Damdor.Temporio
             if (isDisposed) return;
             isDisposed = true;
             ClearTimerBuilders();
-            foreach (var timer in timers.Values)
+            // Wait continuations may call back into the manager. Remove timers before completing their waits.
+            var timersToRelease = new List<InternalTimer>(timers.Values);
+            timers.Clear();
+            foreach (var timer in timersToRelease)
             {
                 if (timer != executingTimer) ReleaseInternalTimer(timer);
             }
 
-            timers.Clear();
             updateProvider.Unregister(PlayerLoopTiming.Update, OnUpdate);
             updateProvider.Unregister(PlayerLoopTiming.FixedUpdate, OnFixedUpdate);
             updateProvider.Unregister(PlayerLoopTiming.LateUpdate, OnLateUpdate);
@@ -216,7 +218,8 @@ namespace Damdor.Temporio
         {
             GetTimersForGroup(id, tmpTimerList);
             var count = tmpTimerList.Count;
-            foreach (var timer in tmpTimerList) CancelTimer(timer.id);
+            // A wait continuation can cancel another group and reuse tmpTimerList.
+            foreach (var timer in tmpTimerList.ToArray()) CancelTimer(timer.id);
             return count;
         }
         
@@ -330,6 +333,10 @@ namespace Damdor.Temporio
 
             while (timers.ContainsKey(timer.Id) && !timer.IsPaused && timer.NextInvocationTime <= now)
             {
+#if DAMDOR_TEMPORIO_UNITASK
+                var completion = timer.NextInvocationCompletion;
+                timer.NextInvocationCompletion = null;
+#endif
                 var context = new TimerInvocationContext(timer.InvocationCount, now, timer.NextInvocationTime);
                 var cancelOnException = false;
                 foreach (var invocation in timer.Invocations)
@@ -349,17 +356,19 @@ namespace Damdor.Temporio
                 if (!timer.IsRepeating || cancelOnException ||
                     (timer.InvocationLimit > 0 && timer.InvocationCount >= timer.InvocationLimit))
                     CancelTimer(timer.Id);
-                if (!timers.ContainsKey(timer.Id)) return;
-
-                var periods = timer.MissingPeriodBehaviour == MissingPeriodBehaviour.RunAll
-                    ? 1
-                    : (now - timer.NextInvocationTime).Ticks / timer.RepeatInterval.Ticks + 1;
-                if (periods > (DateTime.MaxValue.Ticks - timer.NextInvocationTime.Ticks) / timer.RepeatInterval.Ticks)
+                if (timers.ContainsKey(timer.Id))
                 {
-                    CancelTimer(timer.Id);
-                    return;
+                    var periods = timer.MissingPeriodBehaviour == MissingPeriodBehaviour.RunAll
+                        ? 1
+                        : (now - timer.NextInvocationTime).Ticks / timer.RepeatInterval.Ticks + 1;
+                    if (periods > (DateTime.MaxValue.Ticks - timer.NextInvocationTime.Ticks) / timer.RepeatInterval.Ticks)
+                        CancelTimer(timer.Id);
+                    else
+                        timer.NextInvocationTime = timer.NextInvocationTime.AddTicks(periods * timer.RepeatInterval.Ticks);
                 }
-                timer.NextInvocationTime = timer.NextInvocationTime.AddTicks(periods * timer.RepeatInterval.Ticks);
+#if DAMDOR_TEMPORIO_UNITASK
+                completion?.TrySetResult(true);
+#endif
             }
         }
 
@@ -378,10 +387,17 @@ namespace Damdor.Temporio
         
         private void ReleaseInternalTimer(InternalTimer internalTimer)
         {
+#if DAMDOR_TEMPORIO_UNITASK
+            var completion = internalTimer.NextInvocationCompletion;
+            internalTimer.NextInvocationCompletion = null;
+#endif
             foreach (var invocation in internalTimer.Invocations) invocation.ReturnToPool(Pooling);
             foreach (var guard in internalTimer.Guards) guard.ReturnToPool(Pooling);
 
             Pooling.ReleaseInternalTimer(internalTimer);
+#if DAMDOR_TEMPORIO_UNITASK            
+            completion?.TrySetResult(false);
+#endif
         }
         
         private void ReleaseInternalTimerBuilder(InternalTimerBuilder builder)

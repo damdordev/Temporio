@@ -24,6 +24,7 @@ Temporio is a timer scheduling library for Unity, with one-time and repeating ti
   - [Pausing and resuming timers](#pausing-and-resuming-timers)
   - [Guards](#guards)
   - [MissingPeriodBehaviour](#missingperiodbehaviour)
+  - [Waiting for an invocation](#waiting-for-an-invocation)
   - [ITimeProvider](#itimeprovider)
   - [IUpdateProvider](#iupdateprovider)
 
@@ -448,6 +449,30 @@ timerManager.Schedule()
 ```
 
 Choose `RunOnce` when only the latest update matters. Choose `RunAll` when every elapsed period must be processed, allowing for potentially many callbacks in one update after a long delay.
+
+#### Waiting for an invocation
+
+Temporio has intergration with UniTask, if UniTask is in project.
+Use `Timer.WaitForInvocation(CancellationToken)` to await the next invocation as a `UniTask<bool>`:
+
+```csharp
+using var cancellation = new System.Threading.CancellationTokenSource();
+var timer = timerManager.Schedule()
+    .After(TimeSpan.FromSeconds(2))
+    .Action(() => Debug.Log("Timer action"))
+    .Run();
+
+bool invoked = await timer.WaitForInvocation(cancellation.Token);
+if (invoked)
+{
+    Debug.Log("The timer's actions have finished");
+}
+```
+
+The result is `true` after the next invocation's actions finish, including when an action throws or cancels the timer. It is `false` if the wait's token is cancelled first, the timer is cancelled before invoking (including by a guard or its group), or the manager is disposed. Default and already inactive handles return `false` immediately. Cancellation of the wait returns `false` without throwing or cancelling the timer. Pass `System.Threading.CancellationToken.None` to wait without a cancellation token.
+
+Each call waits for one future invocation. Multiple callers can await the same invocation independently. For repeating timers, call again after each successful wait to await the following invocation. A wait started inside a timer action observes the following invocation; it returns `false` if the timer ends after the current invocation. Paused timers keep their waits pending until resumed or cancelled. Completion follows the timer's selected update phase and time provider.
+
 
 ### ITimeProvider
 
