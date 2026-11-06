@@ -56,9 +56,12 @@ namespace Damdor.Temporio.Tests
                 .Timing(timing)
                 .Run();
             
-            Assert.That(timer.TimerGroup, Is.EqualTo(timerGroup));
-            Assert.That(timer.TimerGroup.Name, Is.EqualTo(timerGroup.Name));
-            Assert.That(timer2.TimerGroup, Is.Not.EqualTo(timerGroup));
+            Assert.That(timer.TryGetTimerGroup(out var timerGroup1), Is.True);
+            Assert.That(timerGroup1, Is.EqualTo(timerGroup));
+            Assert.That(timer.TryGetTimerGroup(out var timerGroup2), Is.True);
+            Assert.That(timerGroup2.Name, Is.EqualTo(timerGroup.Name));
+            Assert.That(timer2.TryGetTimerGroup(out var timerGroup3), Is.True);
+            Assert.That(timerGroup3, Is.Not.EqualTo(timerGroup));
         }
         
         [Test]
@@ -152,20 +155,28 @@ namespace Damdor.Temporio.Tests
             group.Resume();
             TickAt(start.AddSeconds(3));
             group.Pause();
-            Assert.That(first.IsPaused, Is.True);
-            Assert.That(first.IsPausedSelf, Is.False);
-            Assert.That(second.IsPaused, Is.True);
+            Assert.That(first.TryGetIsPaused(out var isPaused4), Is.True);
+            Assert.That(isPaused4, Is.True);
+            Assert.That(first.TryGetIsPausedSelf(out var isPausedSelf5), Is.True);
+            Assert.That(isPausedSelf5, Is.False);
+            Assert.That(second.TryGetIsPaused(out var isPaused6), Is.True);
+            Assert.That(isPaused6, Is.True);
             TickAt(start.AddSeconds(30));
             group.Pause();
             Assert.That(calls, Is.EqualTo(100));
             Assert.That(group.GetTimersInGroup(), Has.Count.EqualTo(2));
-            Assert.That(first.TimeToNextInvocation, Is.EqualTo(TimeSpan.FromSeconds(7)));
+            Assert.That(first.TryGetTimeToNextInvocation(out var timeToNextInvocation7), Is.True);
+            Assert.That(timeToNextInvocation7, Is.EqualTo(TimeSpan.FromSeconds(7)));
             group.Resume();
             group.Resume();
-            Assert.That(first.IsPaused, Is.False);
-            Assert.That(second.IsPaused, Is.False);
-            Assert.That(first.NextInvocationTime, Is.EqualTo(start.AddSeconds(37)));
-            Assert.That(second.NextInvocationTime, Is.EqualTo(start.AddSeconds(39)));
+            Assert.That(first.TryGetIsPaused(out var isPaused8), Is.True);
+            Assert.That(isPaused8, Is.False);
+            Assert.That(second.TryGetIsPaused(out var isPaused9), Is.True);
+            Assert.That(isPaused9, Is.False);
+            Assert.That(first.TryGetNextInvocationTime(out var nextInvocationTime10), Is.True);
+            Assert.That(nextInvocationTime10, Is.EqualTo(start.AddSeconds(37)));
+            Assert.That(second.TryGetNextInvocationTime(out var nextInvocationTime11), Is.True);
+            Assert.That(nextInvocationTime11, Is.EqualTo(start.AddSeconds(39)));
             TickAt(start.AddSeconds(37));
             Assert.That(calls, Is.EqualTo(101));
             TickAt(start.AddSeconds(39));
@@ -187,18 +198,24 @@ namespace Damdor.Temporio.Tests
             TickAt(start.AddSeconds(4));
             if (pauseSelfFirst) group.Pause();
             else timer.Pause();
-            Assert.That(timer.IsPausedSelf, Is.True);
+            Assert.That(timer.TryGetIsPausedSelf(out var isPausedSelf12), Is.True);
+            Assert.That(isPausedSelf12, Is.True);
             TickAt(start.AddSeconds(6));
             if (resumeSelfFirst) timer.Resume();
             else group.Resume();
-            Assert.That(timer.IsPaused, Is.True);
-            Assert.That(timer.IsPausedSelf, Is.EqualTo(!resumeSelfFirst));
-            Assert.That(timer.TimeToNextInvocation, Is.EqualTo(TimeSpan.FromSeconds(8)));
+            Assert.That(timer.TryGetIsPaused(out var isPaused13), Is.True);
+            Assert.That(isPaused13, Is.True);
+            Assert.That(timer.TryGetIsPausedSelf(out var isPausedSelf14), Is.True);
+            Assert.That(isPausedSelf14, Is.EqualTo(!resumeSelfFirst));
+            Assert.That(timer.TryGetTimeToNextInvocation(out var timeToNextInvocation15), Is.True);
+            Assert.That(timeToNextInvocation15, Is.EqualTo(TimeSpan.FromSeconds(8)));
             TickAt(start.AddSeconds(8));
             if (resumeSelfFirst) group.Resume();
             else timer.Resume();
-            Assert.That(timer.IsPaused, Is.False);
-            Assert.That(timer.NextInvocationTime, Is.EqualTo(start.AddSeconds(16)));
+            Assert.That(timer.TryGetIsPaused(out var isPaused16), Is.True);
+            Assert.That(isPaused16, Is.False);
+            Assert.That(timer.TryGetNextInvocationTime(out var nextInvocationTime17), Is.True);
+            Assert.That(nextInvocationTime17, Is.EqualTo(start.AddSeconds(16)));
             TickAt(start.AddSeconds(15));
             Assert.That(calls, Is.Zero);
             TickAt(start.AddSeconds(16));
@@ -215,15 +232,20 @@ namespace Damdor.Temporio.Tests
             var calls = 0;
             var timer = timerManager.Schedule().Timing(timing).Group(group).After(TimeSpan.FromSeconds(10))
                 .Action(() => calls++).Run();
-            Assert.That(timer.IsPaused, Is.True);
-            Assert.That(timer.IsPausedSelf, Is.False);
+            Assert.That(timer.TryGetIsPaused(out var isPaused18), Is.True);
+            Assert.That(isPaused18, Is.True);
+            Assert.That(timer.TryGetIsPausedSelf(out var isPausedSelf19), Is.True);
+            Assert.That(isPausedSelf19, Is.False);
             timer.Resume();
-            Assert.That(timer.IsPaused, Is.True);
+            Assert.That(timer.TryGetIsPaused(out var isPaused20), Is.True);
+            Assert.That(isPaused20, Is.True);
             TickAt(start.AddSeconds(20));
             Assert.That(calls, Is.Zero);
-            Assert.That(timer.TimeToNextInvocation, Is.EqualTo(TimeSpan.FromSeconds(10)));
+            Assert.That(timer.TryGetTimeToNextInvocation(out var timeToNextInvocation21), Is.True);
+            Assert.That(timeToNextInvocation21, Is.EqualTo(TimeSpan.FromSeconds(10)));
             group.Resume();
-            Assert.That(timer.NextInvocationTime, Is.EqualTo(start.AddSeconds(30)));
+            Assert.That(timer.TryGetNextInvocationTime(out var nextInvocationTime22), Is.True);
+            Assert.That(nextInvocationTime22, Is.EqualTo(start.AddSeconds(30)));
             TickAt(start.AddSeconds(30));
             Assert.That(calls, Is.EqualTo(1));
         }
@@ -240,9 +262,12 @@ namespace Damdor.Temporio.Tests
             var second = timerManager.Schedule().Timing(timing).Group(group).Action(() => calls += 100).Run();
             TickAt(start.AddSeconds(5));
             Assert.That(calls, Is.EqualTo(1));
-            Assert.That(first.InvocationCount, Is.EqualTo(1));
-            Assert.That(first.IsPaused, Is.True);
-            Assert.That(second.IsPaused, Is.True);
+            Assert.That(first.TryGetInvocationCount(out var invocationCount23), Is.True);
+            Assert.That(invocationCount23, Is.EqualTo(1));
+            Assert.That(first.TryGetIsPaused(out var isPaused24), Is.True);
+            Assert.That(isPaused24, Is.True);
+            Assert.That(second.TryGetIsPaused(out var isPaused25), Is.True);
+            Assert.That(isPaused25, Is.True);
             TickAt(start.AddSeconds(10));
             Assert.That(calls, Is.EqualTo(1));
         }
@@ -257,7 +282,7 @@ namespace Damdor.Temporio.Tests
             Cancel(group, type);
             group.Resume();
             Assert.That(timer.IsAlive, Is.False);
-            Assert.That(timer.IsPaused, Is.False);
+            Assert.That(timer.TryGetIsPaused(out _), Is.False);
         }
 
         [Test]
@@ -275,7 +300,8 @@ namespace Damdor.Temporio.Tests
             var timer = timerManager.Schedule().Timing(timing).Group(group).Run();
             oldGroup.Pause();
             oldGroup.Resume();
-            Assert.That(timer.IsPaused, Is.False);
+            Assert.That(timer.TryGetIsPaused(out var isPaused26), Is.True);
+            Assert.That(isPaused26, Is.False);
             group.Pause();
             timerManager.Dispose();
             Assert.DoesNotThrow(group.Pause);

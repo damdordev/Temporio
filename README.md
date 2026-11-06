@@ -63,7 +63,32 @@ Add the package to the `dependencies` object in your project's `Packages/manifes
 
 ### Timer
 
-`Timer` is a lightweight, readonly struct returned when a timer is scheduled. Use it to cancel the timer or inspect properties such as `IsAlive`, `IsRepeating`, `InvocationCount`, `NextInvocationTime`, and `TimeToNextInvocation`. The handle does not keep its manager alive. `IsAlive` becomes `false` after completion or cancellation.
+`Timer` is a lightweight, readonly struct returned when a timer is scheduled. Use it to cancel the timer, check `IsAlive`, or query its runtime state. The handle does not keep its manager alive. `IsAlive` becomes `false` after completion or cancellation.
+
+State queries return `true` and supply the requested value only while the timer is alive. For default, completed, cancelled, or disposed handles, or when the manager is no longer available, they return `false` and set the output to its type's default value. Only use the output when the query succeeds:
+
+```csharp
+if (timer.TryGetIsRepeating(out bool isRepeating))
+{
+    Debug.Log($"Repeating: {isRepeating}");
+}
+```
+
+The available queries are:
+
+```csharp
+bool TryGetTimerGroup(out TimerGroup timerGroup);
+bool TryGetIsRepeating(out bool isRepeating);
+bool TryGetRepeatInterval(out TimeSpan repeatInterval);
+bool TryGetNextInvocationTime(out DateTime nextInvocationTime);
+bool TryGetTimeToNextInvocation(out TimeSpan timeToNextInvocation);
+bool TryGetInvocationLimit(out int invocationLimit);
+bool TryGetInvocationCount(out int invocationCount);
+bool TryGetIsPausedSelf(out bool isPausedSelf);
+bool TryGetIsPaused(out bool isPaused);
+```
+
+A successful query can return `false`, zero, or an inactive group handle as valid state: a timer can run once, have no completed invocations or invocation limit, be unpaused, or have no assigned group.
 
 ### TimerBuilder
 
@@ -324,7 +349,7 @@ timer.Pause();
 timer.Resume();
 ```
 
-Pausing preserves `IsAlive` and `InvocationCount`. `TimeToNextInvocation` freezes while paused, and `NextInvocationTime` shifts by the total pause duration when execution resumes. For example, pausing with seven seconds remaining and resuming thirty seconds later still leaves seven seconds until the next invocation. Repeating timers keep their interval and invocation limit; paused time does not create missed periods for `MissingPeriodBehaviour`.
+Pausing preserves `IsAlive` and the count returned by `TryGetInvocationCount`. The remaining delay returned by `TryGetTimeToNextInvocation` freezes while paused, and the time returned by `TryGetNextInvocationTime` shifts by the total pause duration when execution resumes. For example, pausing with seven seconds remaining and resuming thirty seconds later still leaves seven seconds until the next invocation. Repeating timers keep their interval and invocation limit; paused time does not create missed periods for `MissingPeriodBehaviour`.
 
 Use the same methods on a `TimerGroup` to suspend its timers together:
 
@@ -342,7 +367,7 @@ group.Resume();       // This timer remains paused individually.
 groupedTimer.Resume();
 ```
 
-`IsPausedSelf` reports the timer's individual pause state; `IsPaused` is true if either the timer or its group is paused. Both pause states must be cleared before execution continues. Overlapping pauses count once toward the total pause duration. Timers added to a paused group start paused, preserving their initial delay until the group resumes.
+On a live timer, `TryGetIsPausedSelf` retrieves the timer's individual pause state; `TryGetIsPaused` retrieves whether either the timer or its group is paused. Both pause states must be cleared before execution continues. Overlapping pauses count once toward the total pause duration. Timers added to a paused group start paused, preserving their initial delay until the group resumes.
 
 Repeated calls to `Pause()` or `Resume()` for the same pause state have no additional effect. Calls on default, completed, cancelled, or disposed handles do nothing. When called from an action, pausing allows the remaining actions in the current invocation to finish and stops further invocations, including `RunAll` catch-up. Cancellation guards still run during the selected update phase while paused, and `Cancel()` and group disposal still cancel paused timers.
 

@@ -417,12 +417,18 @@ namespace Damdor.Temporio.Tests
 
             Assert.That(builder.IsValid, Is.False);
             Assert.That(timer.IsAlive, Is.True);
-            Assert.That(timer.IsRepeating, Is.True);
-            Assert.That(timer.RepeatInterval, Is.EqualTo(period));
-            Assert.That(timer.NextInvocationTime, Is.EqualTo(start));
-            Assert.That(timer.TimeToNextInvocation, Is.EqualTo(TimeSpan.FromSeconds(10)));
-            Assert.That(timer.InvocationLimit, Is.EqualTo(3));
-            Assert.That(timer.InvocationCount, Is.Zero);
+            Assert.That(timer.TryGetIsRepeating(out var isRepeating1), Is.True);
+            Assert.That(isRepeating1, Is.True);
+            Assert.That(timer.TryGetRepeatInterval(out var repeatInterval2), Is.True);
+            Assert.That(repeatInterval2, Is.EqualTo(period));
+            Assert.That(timer.TryGetNextInvocationTime(out var nextInvocationTime3), Is.True);
+            Assert.That(nextInvocationTime3, Is.EqualTo(start));
+            Assert.That(timer.TryGetTimeToNextInvocation(out var timeToNextInvocation4), Is.True);
+            Assert.That(timeToNextInvocation4, Is.EqualTo(TimeSpan.FromSeconds(10)));
+            Assert.That(timer.TryGetInvocationLimit(out var invocationLimit5), Is.True);
+            Assert.That(invocationLimit5, Is.EqualTo(3));
+            Assert.That(timer.TryGetInvocationCount(out var invocationCount6), Is.True);
+            Assert.That(invocationCount6, Is.Zero);
             var internalTimer = timerManager.GetInternalTimer(timer.id);
             Assert.That(internalTimer, Is.Not.Null);
             Assert.That(internalTimer.StartTime, Is.EqualTo(start));

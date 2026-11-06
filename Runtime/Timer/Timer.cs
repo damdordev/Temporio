@@ -8,8 +8,8 @@ namespace Damdor.Temporio
     /// <remarks>
     /// A timer handle can be used to inspect the runtime state of the associated timer and request lifecycle
     /// operations such as cancellation. The handle does not own the timer manager and does not keep it alive.
-    /// If the associated manager is no longer available, timer state information may be unavailable and default
-    /// values may be returned by state queries.
+    /// State queries return false and set their output to the default value when the timer is no longer alive
+    /// or the associated manager is no longer available. Output values are meaningful only when a query succeeds.
     /// </remarks>
     public readonly struct Timer : IEquatable<Timer>
     {
@@ -25,118 +25,121 @@ namespace Damdor.Temporio
         public bool IsAlive => GetInternalTimer() != null;
 
         /// <summary>
-        /// Gets the timer group associated with this timer.
+        /// Attempts to get the timer group associated with this timer.
         /// </summary>
-        /// <value>
-        /// A handle representing the group that contains the timer, or the default timer group handle if no group information is available.
-        /// </value>
-        /// <remarks>
-        /// This property provides access to the group assigned to the timer by the timer manager. If the associated timer manager can no longer be reached or the timer is no longer available, the returned handle may represent a default or inactive group.
-        /// </remarks>
-        public TimerGroup TimerGroup
+        /// <param name="timerGroup">The group that contains the timer if successful; otherwise, the default value.</param>
+        /// <returns>True if the timer is alive and its manager is available; otherwise, false.</returns>
+        public bool TryGetTimerGroup(out TimerGroup timerGroup)
         {
-            get
-            {
-                var internalTimer = GetInternalTimer();
-                return internalTimer != null ? new TimerGroup(timerManager, internalTimer.GroupId) : default;
-            }
+            var internalTimer = GetInternalTimer();
+            timerGroup = internalTimer != null ? new TimerGroup(timerManager, internalTimer.GroupId) : default;
+            return internalTimer != null;
         }
 
         /// <summary>
-        /// Gets a value indicating whether the associated timer is periodic.
+        /// Attempts to get a value indicating whether the associated timer repeats.
         /// </summary>
-        /// <value>
-        /// true if the timer manager is available and the timer identified by this handle is periodic; otherwise, false.
-        /// </value>
-        /// <remarks>
-        /// This property returns false if the associated timer manager can no longer be reached or if the timer is configured to run only once.
-        /// </remarks>
-        public bool IsRepeating => GetInternalTimer()?.IsRepeating ?? false;
+        /// <param name="isRepeating">Whether the timer is configured to repeat if successful; otherwise, the default value.</param>
+        /// <returns>True if the timer is alive and its manager is available; otherwise, false.</returns>
+        public bool TryGetIsRepeating(out bool isRepeating)
+        {
+            var internalTimer = GetInternalTimer();
+            isRepeating = internalTimer?.IsRepeating ?? default;
+            return internalTimer != null;
+        }
 
         /// <summary>
-        /// Gets the interval between invocations of the associated timer.
+        /// Attempts to get the interval between invocations of the associated timer.
         /// </summary>
-        /// <value>
-        /// The timer period, or <see cref="TimeSpan.Zero"/> if the associated timer manager is unavailable.
-        /// </value>
-        public TimeSpan RepeatInterval => GetInternalTimer()?.RepeatInterval ?? TimeSpan.Zero;
+        /// <param name="repeatInterval">The repeat interval; zero for a timer configured to run once if successful; otherwise, the default value.</param>
+        /// <returns>True if the timer is alive and its manager is available; otherwise, false.</returns>
+        public bool TryGetRepeatInterval(out TimeSpan repeatInterval)
+        {
+            var internalTimer = GetInternalTimer();
+            repeatInterval = internalTimer?.RepeatInterval ?? default;
+            return internalTimer != null;
+        }
 
         /// <summary>
-        /// Gets the date and time at which the associated timer is next scheduled to be invoked.
+        /// Attempts to get the next scheduled invocation time of the associated timer.
         /// </summary>
-        /// <value>
-        /// The next scheduled invocation time for the timer, or the current date and time if the associated timer manager is unavailable.
-        /// </value>
-        /// <remarks>
-        /// While paused, this value remains unchanged until execution resumes, when it shifts by the total pause duration.
-        /// If the manager can no longer be reached, the property returns the current date and time as a fallback value.
-        /// </remarks>
-        public DateTime NextInvocationTime => GetInternalTimer()?.NextInvocationTime ?? DateTime.Now;
+        /// <param name="nextInvocationTime">The next scheduled invocation time if successful; otherwise, the default value.</param>
+        /// <returns>True if the timer is alive and its manager is available; otherwise, false.</returns>
+        /// <remarks>While paused, this time remains unchanged until execution resumes, when it shifts by the total pause duration.</remarks>
+        public bool TryGetNextInvocationTime(out DateTime nextInvocationTime)
+        {
+            var internalTimer = GetInternalTimer();
+            nextInvocationTime = internalTimer?.NextInvocationTime ?? default;
+            return internalTimer != null;
+        }
 
         /// <summary>
-        /// Gets the remaining time until the associated timer is next scheduled to invoke.
+        /// Attempts to get the remaining time until the next invocation of the associated timer.
         /// </summary>
-        /// <value>
-        /// The time interval until the next invocation, or <see cref="TimeSpan.Zero"/> if the associated timer manager is unavailable.
-        /// </value>
+        /// <param name="timeToNextInvocation">The remaining delay, clamped to zero when overdue if successful; otherwise, the default value.</param>
+        /// <returns>True if the timer is alive and its manager is available; otherwise, false.</returns>
         /// <remarks>The remaining delay is frozen while the timer is paused directly or by its group.</remarks>
-        public TimeSpan TimeToNextInvocation
+        public bool TryGetTimeToNextInvocation(out TimeSpan timeToNextInvocation)
         {
-            get
-            {
-                var internalTimer = GetInternalTimer();
-                if(internalTimer == null) return TimeSpan.Zero;
-                timerManager.TryGetTarget(out var manager);
-                var time = internalTimer.NextInvocationTime - (internalTimer.IsPaused ? internalTimer.PausedAt : manager!.Now);
-                return time < TimeSpan.Zero ? TimeSpan.Zero : time;
-            }
+            timeToNextInvocation = default;
+            if (timerManager == null || !timerManager.TryGetTarget(out var manager)) return false;
+            var internalTimer = manager.GetInternalTimer(id);
+            if (internalTimer == null) return false;
+            var time = internalTimer.NextInvocationTime - (internalTimer.IsPaused ? internalTimer.PausedAt : manager.Now);
+            timeToNextInvocation = time < TimeSpan.Zero ? TimeSpan.Zero : time;
+            return true;
         }
 
         /// <summary>
-        /// Gets the configured maximum number of times the associated timer may be invoked.
+        /// Attempts to get the configured maximum number of invocations of the associated timer.
         /// </summary>
-        /// <value>
-        /// The invocation limit reported by the timer manager, or -1 if the associated timer manager is unavailable.
-        /// 0 means no limit
-        /// </value>
-        /// <remarks>
-        /// This value describes the timer's configured invocation cap and does not indicate how many invocations have already occurred.
-        /// </remarks>
-        public int InvocationLimit => GetInternalTimer()?.InvocationLimit ?? -1;
+        /// <param name="invocationLimit">The invocation limit; zero means unlimited invocations if successful; otherwise, the default value.</param>
+        /// <returns>True if the timer is alive and its manager is available; otherwise, false.</returns>
+        /// <remarks>This limit does not indicate how many invocations have already occurred.</remarks>
+        public bool TryGetInvocationLimit(out int invocationLimit)
+        {
+            var internalTimer = GetInternalTimer();
+            invocationLimit = internalTimer?.InvocationLimit ?? default;
+            return internalTimer != null;
+        }
 
         /// <summary>
-        /// Gets the number of times the associated timer has been invoked.
+        /// Attempts to get the number of times the associated timer has been invoked.
         /// </summary>
-        /// <value>
-        /// The number of completed invocations for the timer, or 0 if the timer manager is unavailable.
-        /// </value>
-        /// <remarks>
-        /// This property reflects the invocation count reported by the associated timer manager. If the manager can no longer be reached, the count cannot be determined and 0 is returned.
-        /// </remarks>
-        public int InvocationCount => GetInternalTimer()?.InvocationCount ?? 0;
+        /// <param name="invocationCount">The number of completed invocations if successful; otherwise, the default value.</param>
+        /// <returns>True if the timer is alive and its manager is available; otherwise, false.</returns>
+        public bool TryGetInvocationCount(out int invocationCount)
+        {
+            var internalTimer = GetInternalTimer();
+            invocationCount = internalTimer?.InvocationCount ?? default;
+            return internalTimer != null;
+        }
 
         /// <summary>
-        /// Gets a value indicating whether the associated timer is paused directly.
+        /// Attempts to get a value indicating whether the associated timer is paused directly.
         /// </summary>
-        /// <value>
-        /// true if the timer is paused by its own pause state; otherwise, false.
-        /// </value>
-        /// <remarks>
-        /// This property represents only the timer's individual pause state and does not indicate whether execution is suspended because of its timer group or manager state. If the associated timer cannot be found, this property returns false.
-        /// </remarks>
-        public bool IsPausedSelf => GetInternalTimer()?.IsPausedSelf ?? false;
+        /// <param name="isPausedSelf">Whether the timer is paused by its own pause state if successful; otherwise, the default value.</param>
+        /// <returns>True if the timer is alive and its manager is available; otherwise, false.</returns>
+        /// <remarks>This reports only the individual pause state. A paused group can still prevent execution.</remarks>
+        public bool TryGetIsPausedSelf(out bool isPausedSelf)
+        {
+            var internalTimer = GetInternalTimer();
+            isPausedSelf = internalTimer?.IsPausedSelf ?? default;
+            return internalTimer != null;
+        }
 
         /// <summary>
-        /// Gets a value indicating whether the associated timer is currently paused. Timer can be paused in two ways:
-        /// by calling Pause() on it or on its group. If any of these pause operations are in effect, this property returns true.
+        /// Attempts to get a value indicating whether the associated timer is paused directly or by its group.
         /// </summary>
-        /// <value>
-        /// true if the timer is paused and can still be resumed; otherwise, false.
-        /// </value>
-        /// <remarks>
-        /// This property returns false if the associated timer manager can no longer be reached, if the timer is no longer active, or if the timer is not currently paused.
-        /// </remarks>
-        public bool IsPaused => GetInternalTimer()?.IsPaused ?? false;
+        /// <param name="isPaused">Whether either the timer or its group is paused if successful; otherwise, the default value.</param>
+        /// <returns>True if the timer is alive and its manager is available; otherwise, false.</returns>
+        /// <remarks>Both the individual and group pause states must be cleared before execution resumes.</remarks>
+        public bool TryGetIsPaused(out bool isPaused)
+        {
+            var internalTimer = GetInternalTimer();
+            isPaused = internalTimer?.IsPaused ?? default;
+            return internalTimer != null;
+        }
 
         private readonly WeakReference<TimerManager> timerManager;
         internal readonly long id;

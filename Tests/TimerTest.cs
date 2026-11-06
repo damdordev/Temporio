@@ -224,10 +224,14 @@ namespace Damdor.Temporio.Tests
 
             var timer = builder.Run();
 
-            Assert.That(timer.IsRepeating, Is.EqualTo(repeating));
-            Assert.That(timer.RepeatInterval, Is.EqualTo(repeating ? period : TimeSpan.Zero));
-            Assert.That(GetInternalTimer(timer).IsRepeating, Is.EqualTo(timer.IsRepeating));
-            Assert.That(GetInternalTimer(timer).RepeatInterval, Is.EqualTo(timer.RepeatInterval));
+            Assert.That(timer.TryGetIsRepeating(out var isRepeating1), Is.True);
+            Assert.That(isRepeating1, Is.EqualTo(repeating));
+            Assert.That(timer.TryGetRepeatInterval(out var repeatInterval2), Is.True);
+            Assert.That(repeatInterval2, Is.EqualTo(repeating ? period : TimeSpan.Zero));
+            Assert.That(timer.TryGetIsRepeating(out var isRepeating3), Is.True);
+            Assert.That(GetInternalTimer(timer).IsRepeating, Is.EqualTo(isRepeating3));
+            Assert.That(timer.TryGetRepeatInterval(out var repeatInterval4), Is.True);
+            Assert.That(GetInternalTimer(timer).RepeatInterval, Is.EqualTo(repeatInterval4));
         }
 
         [TestCase(0)]
@@ -238,7 +242,8 @@ namespace Damdor.Temporio.Tests
             var timer = Schedule().After(TimeSpan.FromSeconds(5)).Every(TimeSpan.FromSeconds(2))
                 .InvocationLimit(limit).Run();
 
-            Assert.That(timer.InvocationLimit, Is.EqualTo(limit));
+            Assert.That(timer.TryGetInvocationLimit(out var invocationLimit5), Is.True);
+            Assert.That(invocationLimit5, Is.EqualTo(limit));
             Assert.That(GetInternalTimer(timer).InvocationLimit, Is.EqualTo(limit));
         }
 
@@ -290,8 +295,10 @@ namespace Damdor.Temporio.Tests
             AssertInvocationTimes(timer, scheduledTime.AddSeconds(2));
             timeProvider.Now = scheduledTime.AddSeconds(1);
             AssertInvocationTimes(timer, scheduledTime.AddSeconds(2));
-            Assert.That(timer.InvocationLimit, Is.EqualTo(3));
-            Assert.That(timer.InvocationCount, Is.EqualTo(invocation + 1));
+            Assert.That(timer.TryGetInvocationLimit(out var invocationLimit6), Is.True);
+            Assert.That(invocationLimit6, Is.EqualTo(3));
+            Assert.That(timer.TryGetInvocationCount(out var invocationCount7), Is.True);
+            Assert.That(invocationCount7, Is.EqualTo(invocation + 1));
         }
 
         [TestCase(false)]
@@ -307,7 +314,8 @@ namespace Damdor.Temporio.Tests
             AssertInvocationTimes(timer, start);
             timeProvider.Now = start.AddSeconds(3);
             AssertInvocationTimes(timer, start);
-            Assert.That(timer.TimeToNextInvocation, Is.EqualTo(TimeSpan.Zero));
+            Assert.That(timer.TryGetTimeToNextInvocation(out var timeToNextInvocation8), Is.True);
+            Assert.That(timeToNextInvocation8, Is.EqualTo(TimeSpan.Zero));
         }
 
         [TestCase(false, 0)]
@@ -408,7 +416,8 @@ namespace Damdor.Temporio.Tests
                 }
             }
 
-            Assert.That(timer.InvocationCount, Is.EqualTo(expectedInvocations));
+            Assert.That(timer.TryGetInvocationCount(out var invocationCount9), Is.True);
+            Assert.That(invocationCount9, Is.EqualTo(expectedInvocations));
             AssertInvocationTimes(timer, start.AddSeconds(8));
             updateProvider.Tick(timing);
             AssertActionCalls(calls, expectedInvocations);
@@ -685,9 +694,12 @@ namespace Damdor.Temporio.Tests
             Assert.That(GetInternalTimer(second), Is.SameAs(firstInternal));
             Assert.That(first.IsAlive, Is.False);
             Assert.That(first.Cancel(), Is.False);
-            Assert.That(second.InvocationCount, Is.Zero);
-            Assert.That(second.InvocationLimit, Is.Zero);
-            Assert.That(second.IsRepeating, Is.False);
+            Assert.That(second.TryGetInvocationCount(out var invocationCount10), Is.True);
+            Assert.That(invocationCount10, Is.Zero);
+            Assert.That(second.TryGetInvocationLimit(out var invocationLimit11), Is.True);
+            Assert.That(invocationLimit11, Is.Zero);
+            Assert.That(second.TryGetIsRepeating(out var isRepeating12), Is.True);
+            Assert.That(isRepeating12, Is.False);
             updateProvider.Tick(timing);
             Assert.That(oldCalls, Is.EqualTo(1));
             Assert.That(newCalls, Is.EqualTo(1));
@@ -738,25 +750,33 @@ namespace Damdor.Temporio.Tests
             var builder = Schedule().After(TimeSpan.FromSeconds(10)).Action(() => calls++);
             if (repeating) builder.Every(TimeSpan.FromSeconds(2)).InvocationLimit(2);
             var timer = builder.Run();
-            Assert.That(timer.IsPaused, Is.False);
+            Assert.That(timer.TryGetIsPaused(out var isPaused13), Is.True);
+            Assert.That(isPaused13, Is.False);
             timer.Resume();
             TickAt(start.AddSeconds(3));
             timer.Pause();
 
             Assert.That(timer.IsAlive, Is.True);
-            Assert.That(timer.IsPausedSelf, Is.True);
-            Assert.That(timer.IsPaused, Is.True);
+            Assert.That(timer.TryGetIsPausedSelf(out var isPausedSelf14), Is.True);
+            Assert.That(isPausedSelf14, Is.True);
+            Assert.That(timer.TryGetIsPaused(out var isPaused15), Is.True);
+            Assert.That(isPaused15, Is.True);
             TickAt(start.AddSeconds(30));
             timer.Pause();
             Assert.That(calls, Is.Zero);
-            Assert.That(timer.InvocationCount, Is.Zero);
-            Assert.That(timer.TimeToNextInvocation, Is.EqualTo(TimeSpan.FromSeconds(7)));
-            Assert.That(timer.NextInvocationTime, Is.EqualTo(start.AddSeconds(10)));
+            Assert.That(timer.TryGetInvocationCount(out var invocationCount16), Is.True);
+            Assert.That(invocationCount16, Is.Zero);
+            Assert.That(timer.TryGetTimeToNextInvocation(out var timeToNextInvocation17), Is.True);
+            Assert.That(timeToNextInvocation17, Is.EqualTo(TimeSpan.FromSeconds(7)));
+            Assert.That(timer.TryGetNextInvocationTime(out var nextInvocationTime18), Is.True);
+            Assert.That(nextInvocationTime18, Is.EqualTo(start.AddSeconds(10)));
 
             timer.Resume();
             timer.Resume();
-            Assert.That(timer.IsPausedSelf, Is.False);
-            Assert.That(timer.IsPaused, Is.False);
+            Assert.That(timer.TryGetIsPausedSelf(out var isPausedSelf19), Is.True);
+            Assert.That(isPausedSelf19, Is.False);
+            Assert.That(timer.TryGetIsPaused(out var isPaused20), Is.True);
+            Assert.That(isPaused20, Is.False);
             AssertInvocationTimes(timer, start.AddSeconds(37));
             TickAt(start.AddSeconds(36));
             Assert.That(calls, Is.Zero);
@@ -800,7 +820,8 @@ namespace Damdor.Temporio.Tests
             timer.Pause();
             TickAt(start.AddSeconds(104));
             Assert.That(calls, Is.EqualTo(1));
-            Assert.That(timer.InvocationCount, Is.EqualTo(1));
+            Assert.That(timer.TryGetInvocationCount(out var invocationCount21), Is.True);
+            Assert.That(invocationCount21, Is.EqualTo(1));
             timer.Resume();
             AssertInvocationTimes(timer, start.AddSeconds(110));
             TickAt(start.AddSeconds(110));
@@ -824,13 +845,15 @@ namespace Damdor.Temporio.Tests
             TickAt(start.AddSeconds(7));
             Assert.That(calls, Is.EqualTo(1));
             Assert.That(timer.IsAlive, Is.EqualTo(repeating));
-            Assert.That(timer.IsPaused, Is.EqualTo(repeating));
+            Assert.That(timer.TryGetIsPaused(out var isPaused), Is.EqualTo(repeating));
+            Assert.That(isPaused, Is.EqualTo(repeating));
             TickAt(start.AddSeconds(17));
             Assert.That(calls, Is.EqualTo(1));
             timer.Resume();
             if (!repeating) return;
             var expected = start.AddSeconds(behaviour == MissingPeriodBehaviour.RunAll ? 12 : 18);
-            Assert.That(timer.NextInvocationTime, Is.EqualTo(expected));
+            Assert.That(timer.TryGetNextInvocationTime(out var nextInvocationTime22), Is.True);
+            Assert.That(nextInvocationTime22, Is.EqualTo(expected));
             TickAt(start.AddSeconds(18));
             Assert.That(calls, Is.EqualTo(2));
         }
@@ -848,7 +871,7 @@ namespace Damdor.Temporio.Tests
             cancellation.Cancel();
             TickAt(timerManager.Now);
             Assert.That(timer.IsAlive, Is.False);
-            Assert.That(timer.IsPaused, Is.False);
+            AssertQueriesUnavailable(timer);
             Assert.That(calls, Is.Zero);
         }
 
@@ -863,9 +886,9 @@ namespace Damdor.Temporio.Tests
             Assert.That(GetInternalTimer(replacement), Is.SameAs(original));
             timer.Pause();
             timer.Resume();
-            Assert.That(timer.IsPaused, Is.False);
-            Assert.That(timer.IsPausedSelf, Is.False);
-            Assert.That(replacement.IsPaused, Is.False);
+            AssertQueriesUnavailable(timer);
+            Assert.That(replacement.TryGetIsPaused(out var isPaused23), Is.True);
+            Assert.That(isPaused23, Is.False);
             TickAt(timerManager.Now);
             Assert.That(replacement.IsAlive, Is.False);
         }
@@ -876,20 +899,18 @@ namespace Damdor.Temporio.Tests
             Timer empty = default;
             empty.Pause();
             empty.Resume();
-            Assert.That(empty.IsPaused, Is.False);
-            Assert.That(empty.IsPausedSelf, Is.False);
+            AssertQueriesUnavailable(empty);
             var completed = Schedule().Run();
             TickAt(timerManager.Now);
             completed.Pause();
             completed.Resume();
-            Assert.That(completed.IsPaused, Is.False);
+            AssertQueriesUnavailable(completed);
             var disposed = Schedule().Run();
             disposed.Pause();
             timerManager.Dispose();
             disposed.Pause();
             disposed.Resume();
-            Assert.That(disposed.IsPaused, Is.False);
-            Assert.That(disposed.IsPausedSelf, Is.False);
+            AssertQueriesUnavailable(disposed);
         }
 
         [Test]
@@ -900,6 +921,48 @@ namespace Damdor.Temporio.Tests
             timeProvider.Now = timeProvider.Now.AddSeconds(1);
             Assert.DoesNotThrow(timer.Resume);
             Assert.That(timer.IsAlive, Is.False);
+        }
+
+        [Test]
+        public void StateQueries_UnavailableHandlesReturnFalseAndDefaultOutputs()
+        {
+            AssertQueriesUnavailable(default);
+            var cancelled = Schedule().Every(TimeSpan.FromSeconds(2)).Run();
+            var original = GetInternalTimer(cancelled);
+            cancelled.Cancel();
+            var replacement = Schedule().Run();
+            Assert.That(GetInternalTimer(replacement), Is.SameAs(original));
+            AssertQueriesUnavailable(cancelled);
+            TickAt(timerManager.Now);
+            AssertQueriesUnavailable(replacement);
+            var disposed = Schedule().Run();
+            timerManager.Dispose();
+            AssertQueriesUnavailable(disposed);
+            var unavailableManager = new WeakReference<TimerManager>(null);
+            AssertQueriesUnavailable(new Timer(unavailableManager, disposed.id));
+        }
+
+        private static void AssertQueriesUnavailable(Timer timer)
+        {
+            Assert.That(timer.IsAlive, Is.False);
+            Assert.That(timer.TryGetTimerGroup(out var timerGroup), Is.False);
+            Assert.That(timerGroup, Is.EqualTo(default(TimerGroup)));
+            Assert.That(timer.TryGetIsRepeating(out var isRepeating), Is.False);
+            Assert.That(isRepeating, Is.EqualTo(default(bool)));
+            Assert.That(timer.TryGetRepeatInterval(out var repeatInterval), Is.False);
+            Assert.That(repeatInterval, Is.EqualTo(default(TimeSpan)));
+            Assert.That(timer.TryGetNextInvocationTime(out var nextInvocationTime), Is.False);
+            Assert.That(nextInvocationTime, Is.EqualTo(default(DateTime)));
+            Assert.That(timer.TryGetTimeToNextInvocation(out var timeToNextInvocation), Is.False);
+            Assert.That(timeToNextInvocation, Is.EqualTo(default(TimeSpan)));
+            Assert.That(timer.TryGetInvocationLimit(out var invocationLimit), Is.False);
+            Assert.That(invocationLimit, Is.EqualTo(default(int)));
+            Assert.That(timer.TryGetInvocationCount(out var invocationCount), Is.False);
+            Assert.That(invocationCount, Is.EqualTo(default(int)));
+            Assert.That(timer.TryGetIsPausedSelf(out var isPausedSelf), Is.False);
+            Assert.That(isPausedSelf, Is.EqualTo(default(bool)));
+            Assert.That(timer.TryGetIsPaused(out var isPaused), Is.False);
+            Assert.That(isPaused, Is.EqualTo(default(bool)));
         }
 
         private TimerBuilder Schedule() => timerManager.Schedule().Timing(timing);
@@ -920,9 +983,11 @@ namespace Damdor.Temporio.Tests
         private void AssertInvocationTimes(Timer timer, DateTime expected)
         {
             var remaining = expected - timerManager.Now;
-            Assert.That(timer.NextInvocationTime, Is.EqualTo(expected));
+            Assert.That(timer.TryGetNextInvocationTime(out var nextInvocationTime24), Is.True);
+            Assert.That(nextInvocationTime24, Is.EqualTo(expected));
             Assert.That(GetInternalTimer(timer).NextInvocationTime, Is.EqualTo(expected));
-            Assert.That(timer.TimeToNextInvocation, Is.EqualTo(remaining < TimeSpan.Zero ? TimeSpan.Zero : remaining));
+            Assert.That(timer.TryGetTimeToNextInvocation(out var timeToNextInvocation25), Is.True);
+            Assert.That(timeToNextInvocation25, Is.EqualTo(remaining < TimeSpan.Zero ? TimeSpan.Zero : remaining));
         }
 
         private static TimerBuilder AddAllActions(TimerBuilder builder, List<string> calls,
