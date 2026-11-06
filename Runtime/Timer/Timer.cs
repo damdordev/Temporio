@@ -48,7 +48,7 @@ namespace Damdor.Temporio
         public bool TryGetIsRepeating(out bool isRepeating)
         {
             var internalTimer = GetInternalTimer();
-            isRepeating = internalTimer?.IsRepeating ?? default;
+            isRepeating = internalTimer?.IsRepeating ?? false;
             return internalTimer != null;
         }
 
@@ -60,7 +60,7 @@ namespace Damdor.Temporio
         public bool TryGetRepeatInterval(out TimeSpan repeatInterval)
         {
             var internalTimer = GetInternalTimer();
-            repeatInterval = internalTimer?.RepeatInterval ?? default;
+            repeatInterval = internalTimer?.RepeatInterval ?? TimeSpan.Zero;
             return internalTimer != null;
         }
 
@@ -85,7 +85,7 @@ namespace Damdor.Temporio
         /// <remarks>The remaining delay is frozen while the timer is paused directly or by its group.</remarks>
         public bool TryGetTimeToNextInvocation(out TimeSpan timeToNextInvocation)
         {
-            timeToNextInvocation = default;
+            timeToNextInvocation = TimeSpan.Zero;
             if (timerManager == null || !timerManager.TryGetTarget(out var manager)) return false;
             var internalTimer = manager.GetInternalTimer(id);
             if (internalTimer == null) return false;
@@ -103,7 +103,7 @@ namespace Damdor.Temporio
         public bool TryGetInvocationLimit(out int invocationLimit)
         {
             var internalTimer = GetInternalTimer();
-            invocationLimit = internalTimer?.InvocationLimit ?? default;
+            invocationLimit = internalTimer?.InvocationLimit ?? 0;
             return internalTimer != null;
         }
 
@@ -115,7 +115,7 @@ namespace Damdor.Temporio
         public bool TryGetInvocationCount(out int invocationCount)
         {
             var internalTimer = GetInternalTimer();
-            invocationCount = internalTimer?.InvocationCount ?? default;
+            invocationCount = internalTimer?.InvocationCount ?? 0;
             return internalTimer != null;
         }
 
@@ -128,7 +128,7 @@ namespace Damdor.Temporio
         public bool TryGetIsPausedSelf(out bool isPausedSelf)
         {
             var internalTimer = GetInternalTimer();
-            isPausedSelf = internalTimer?.IsPausedSelf ?? default;
+            isPausedSelf = internalTimer?.IsPausedSelf ?? false;
             return internalTimer != null;
         }
 
@@ -141,7 +141,7 @@ namespace Damdor.Temporio
         public bool TryGetIsPaused(out bool isPaused)
         {
             var internalTimer = GetInternalTimer();
-            isPaused = internalTimer?.IsPaused ?? default;
+            isPaused = internalTimer?.IsPaused ?? false;
             return internalTimer != null;
         }
 
