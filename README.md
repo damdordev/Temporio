@@ -51,7 +51,7 @@ Add the package to the `dependencies` object in your project's `Packages/manifes
 ```json
 {
   "dependencies": {
-    "com.damdor.temporio": "https://github.com/damdordev/Temporio.git#1.0.0-preview"
+    "com.damdor.temporio": "https://github.com/damdordev/Temporio.git#v1.0.0"
   }
 }
 ```
