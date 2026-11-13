@@ -8,7 +8,7 @@ namespace Damdor.Temporio
 
         internal void Reset()
         {
-            Id = Id;
+            Id = 0;
             Name = null;
             IsPaused = false;
         }

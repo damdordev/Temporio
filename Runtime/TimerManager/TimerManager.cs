@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine.Pool;
 
 namespace Damdor.Temporio
 {
@@ -24,7 +25,6 @@ namespace Damdor.Temporio
         private readonly Dictionary<long, InternalTimerBuilder> timerBuilders = new();
         private readonly Dictionary<long, InternalTimer> timers = new();
         private readonly Dictionary<long, InternalTimerGroup> timerGroups = new();
-        private readonly List<Timer> tmpTimerList = new();
         private long lastTimerBuilderId;
         private long lastTimerId;
         private long lastGroupId = 1;
@@ -101,9 +101,7 @@ namespace Damdor.Temporio
             if (isDisposed) throw new ObjectDisposedException(nameof(TimerManager));
             var internalId = checked(++lastTimerBuilderId);
             CreateNewInternalTimerBuilder(internalId);
-            var builder = new TimerBuilder();
-            builder.Setup(weakReference, internalId);
-            return builder;
+            return new TimerBuilder(weakReference, internalId);
         }
 
         /// <summary>
@@ -185,9 +183,17 @@ namespace Damdor.Temporio
             if (isDisposed || !timerGroups.TryGetValue(id, out var group) || group.IsPaused == paused) return;
             group.IsPaused = paused;
             var now = Now;
-            GetTimersForGroup(id, tmpTimerList);
-            foreach (var timer in tmpTimerList)
-                SetTimerPaused(timers[timer.id], paused, true, now);
+            var tmpTimerList = ListPool<Timer>.Get();
+            try
+            {
+                GetTimersForGroup(id, tmpTimerList);
+                foreach (var timer in tmpTimerList) SetTimerPaused(timers[timer.id], paused, true, now);
+            }
+            catch (Exception)
+            {
+                ListPool<Timer>.Release(tmpTimerList);
+                throw;
+            }
         }
 
         private void SetTimerPaused(InternalTimer timer, bool paused, bool byGroup, DateTime now)
@@ -220,11 +226,19 @@ namespace Damdor.Temporio
         
         internal int CancelGroup(long id)
         {
-            GetTimersForGroup(id, tmpTimerList);
-            var count = tmpTimerList.Count;
-            // A wait continuation can cancel another group and reuse tmpTimerList.
-            foreach (var timer in tmpTimerList.ToArray()) CancelTimer(timer.id);
-            return count;
+            var tmpTimerList = ListPool<Timer>.Get();
+            try
+            {
+                GetTimersForGroup(id, tmpTimerList);
+                var count = tmpTimerList.Count;
+                foreach (var timer in tmpTimerList.ToArray()) CancelTimer(timer.id);
+                return count;
+            }
+            catch (Exception)
+            {
+                ListPool<Timer>.Release(tmpTimerList);
+                throw;
+            }
         }
         
         internal void GetTimersForGroup(long groupId, List<Timer> timers)

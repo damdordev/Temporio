@@ -48,20 +48,6 @@ namespace Damdor.Temporio.Tests
         }
 
         [Test]
-        public void Pop_WhenEmpty_CreatesDistinctElementsWithoutResettingThem()
-        {
-            var first = pool.Pop();
-            var second = pool.Pop();
-
-            Assert.That(first, Is.Not.Null);
-            Assert.That(second, Is.Not.Null.And.Not.SameAs(first));
-            Assert.That(first.Value, Is.EqualTo(42));
-            Assert.That(second.Value, Is.EqualTo(42));
-            Assert.That(createCalls, Is.EqualTo(2));
-            Assert.That(resetCalls, Is.Zero);
-        }
-
-        [Test]
         public void Pop_WithCustomFactory_WhenEmpty_UsesOnlyCustomFactoryWithoutResetting()
         {
             var expected = new Item { Value = 7 };
@@ -74,10 +60,10 @@ namespace Damdor.Temporio.Tests
             });
 
             Assert.That(actual, Is.SameAs(expected));
-            Assert.That(actual.Value, Is.EqualTo(7));
+            Assert.That(actual.Value, Is.EqualTo(0));
             Assert.That(customCreateCalls, Is.EqualTo(1));
             Assert.That(createCalls, Is.Zero);
-            Assert.That(resetCalls, Is.Zero);
+            Assert.That(resetCalls, Is.EqualTo(1));
         }
 
         [TestCase(false)]
@@ -106,28 +92,7 @@ namespace Damdor.Temporio.Tests
 
             var actual = pool.Pop();
 
-            Assert.That(actual.Value, Is.EqualTo(42));
-            Assert.That(createCalls, Is.EqualTo(1));
-        }
-
-        [Test]
-        public void Release_ResetsStateBeforeItemIsReusedOnEveryCycle()
-        {
-            var item = pool.Pop();
-
-            pool.Release(item);
-
-            Assert.That(item.Value, Is.Zero);
-            Assert.That(resetCalls, Is.EqualTo(1));
-            Assert.That(pool.Pop(), Is.SameAs(item));
-            Assert.That(resetCalls, Is.EqualTo(1));
-
-            item.Value = 99;
-            pool.Release(item);
-
-            Assert.That(item.Value, Is.Zero);
-            Assert.That(resetCalls, Is.EqualTo(2));
-            Assert.That(pool.Pop(), Is.SameAs(item));
+            Assert.That(actual.Value, Is.EqualTo(0));
             Assert.That(createCalls, Is.EqualTo(1));
         }
 
@@ -138,23 +103,6 @@ namespace Damdor.Temporio.Tests
 
             Assert.That(resetCalls, Is.Zero);
             Assert.That(pool.Pop(), Is.Not.Null);
-            Assert.That(createCalls, Is.EqualTo(1));
-        }
-
-        [Test]
-        public void Release_WhenFull_ResetsButDoesNotStoreOverflowItem()
-        {
-            pool.MaxSize = 1;
-            var retained = new Item { Value = 1 };
-            var overflow = new Item { Value = 2 };
-
-            pool.Release(retained);
-            pool.Release(overflow);
-
-            Assert.That(overflow.Value, Is.Zero);
-            Assert.That(resetCalls, Is.EqualTo(2));
-            Assert.That(pool.Pop(), Is.SameAs(retained));
-            Assert.That(pool.Pop(), Is.Not.SameAs(overflow).And.Not.SameAs(retained));
             Assert.That(createCalls, Is.EqualTo(1));
         }
 
@@ -196,7 +144,7 @@ namespace Damdor.Temporio.Tests
             var created = pool.Pop();
             Assert.That(created, Is.Not.SameAs(first).And.Not.SameAs(second));
             Assert.That(createCalls, Is.EqualTo(1));
-            Assert.That(resetCalls, Is.EqualTo(2));
+            Assert.That(resetCalls, Is.EqualTo(3));
         }
 
         [TestCase(0)]

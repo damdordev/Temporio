@@ -2,7 +2,7 @@
 
 Temporio is a timer scheduling library for Unity, with one-time and repeating timers, automatic cancellation guards, and configurable time and update providers. It minimizes allocations by reusing internal timer, builder, action, and guard objects through pools. Parameterized callbacks help avoid additional allocations from lambda closures.
 
-## Table of Contest
+## Table of Contents
 
 - [Installation](#installation)
 - [Core concepts](#core-concepts)
@@ -322,7 +322,7 @@ timeManager.Schedule()
     .Run();
 ```
 
-Then you can cancell all timers from that group at once:
+Then you can cancel all timers from that group at once:
 ```csharp
 timerGroup.Cancel();
 ```
@@ -481,7 +481,7 @@ Each call waits for one future invocation. Multiple callers can await the same i
 | Provider | Typical use |
 | --- | --- |
 | `UnityTimeProvider` | Normal gameplay. Uses scaled Unity time by default, so timers follow `Time.timeScale`. Prefer `After` for gameplay delays. Pass `useScaledTime: false` to follow unscaled real time instead. |
-| `UtlTimeProvider` | Metagame schedules, such as event end times. Uses `DateTime.UtcNow`; schedule utc-clock timestamps with `When`. System clock changes affect these timers. |
+| `UtcTimeProvider` | Metagame schedules, such as event end times. Uses `DateTime.UtcNow`; schedule utc-clock timestamps with `When`. System clock changes affect these timers. |
 | `LocalTimeProvider` | Metagame schedules, such as event end times. Uses `DateTime.Now`; schedule local-clock timestamps with `When`. System clock changes affect these timers. |
 | `ManualTimeProvider` | Tests and simulations. Set `Now` explicitly to advance time without waiting. |
 

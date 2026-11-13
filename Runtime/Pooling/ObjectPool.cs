@@ -8,7 +8,6 @@ namespace Damdor.Temporio
     {
         private readonly Stack<T> items = new();
         private readonly Action<T> reset;
-        private readonly bool resetOnCreate;
         private int maxSize;
         private readonly Func<T> create;
 
@@ -33,7 +32,7 @@ namespace Damdor.Temporio
         {
             if (items.Count > 0) return items.Pop();
             var item = create();
-            if (resetOnCreate) reset(item);
+            reset(item);
             return item;
         }
             
@@ -41,7 +40,7 @@ namespace Damdor.Temporio
         {
             if (items.Count > 0) return items.Pop();
             var item = create();
-            if (resetOnCreate) reset(item);
+            reset(item);
             return item;
         }
 

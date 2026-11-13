@@ -12,10 +12,10 @@ namespace Damdor.Temporio
     /// Builder is short-lived and can be used only in the frame in which it was created.
     /// </para>
     /// </summary>
-    public struct TimerBuilder : IEquatable<TimerBuilder>
+    public readonly struct TimerBuilder : IEquatable<TimerBuilder>
     {
-        private WeakReference<TimerManager> timerManager;
-        internal long id;
+        private readonly WeakReference<TimerManager> timerManager;
+        internal readonly long id;
 
         /// <summary>
         /// Gets a value indicating whether this builder is still valid and can be used to configure and run the timer.
@@ -28,7 +28,7 @@ namespace Damdor.Temporio
         /// </summary>
         public bool IsValid => GetInternalTimerBuilder() != null;
 
-        internal void Setup(WeakReference<TimerManager> timerManager, long id)
+        internal TimerBuilder(WeakReference<TimerManager> timerManager, long id)
         {
             this.timerManager = timerManager;
             this.id = id;
